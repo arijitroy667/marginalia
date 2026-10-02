@@ -29,3 +29,9 @@
   so nothing is lost. Restore puts the band's top at the slot (the same line is again the reading line) and shows a
   left-edge triangle for 2 s. T-207 adds note markers to the same gutter lane (markers on
   one line will stack, grouped with `sameLine`); T-208 folds the Bookmarks tab into the annotation panel.
+- T-303 (FR-BKM-05): the synced position is one last-write-wins row per document, so each device also keeps its
+  own last point device-locally (`meta['resume:<documentId>']`). On open, if the synced row is from another
+  device, newer than our own point and at least one page away, the reader opens at our own point (or the top) and
+  shows "Continue from {device} (p. n)? Jump / Stay" — never an automatic jump. Device labels come from
+  `platform.deviceLabel()`.
+

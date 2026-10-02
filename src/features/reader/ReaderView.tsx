@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import type { Anchor } from '../../core/anchors/types';
-import type { DocumentRow } from '../../core/db/models';
+import type { DocumentRow, PositionRow } from '../../core/db/models';
 import { annotationsRepo } from '../../core/db/repos';
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery';
 import { usePref } from '../../shared/hooks/usePref';
@@ -101,6 +101,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const [chrome, setChrome] = useState(true);
   const [rotation, setRotation] = useState(0);
   const [help, setHelp] = useState(false); // ? cheat sheet (FR-KEY-03)
+  const [remote, setRemote] = useState<PositionRow | null>(null); // another device's newer point (FR-BKM-05)
   const [sideTab, setSideTab] = useState('pages');
   const [sheetFull, setSheetFull] = useState(false); // phones: panel bottom sheet height
   const themeTrigger = useRef<HTMLButtonElement>(null);
@@ -332,7 +333,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   usePinch(ready, getViewer, container);
   usePageTheme(ready, getViewer, theme, invertImages);
   useAutoHideChrome(compact && ready, container, setChrome);
-  useResume({ pagesReady, getViewer, getInset, container, documentId: row.id, pdf, docHash: row.contentHash });
+  useResume({ pagesReady, getViewer, getInset, container, documentId: row.id, pdf, docHash: row.contentHash, onRemote: setRemote });
 
   // PDFViewer does not watch its container: re-fit fit-width/fit-page when the viewer area resizes
   useEffect(() => {
@@ -560,6 +561,31 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
           <div ref={container} tabIndex={0} aria-label={row.title} className="reader-scroll outline-none">
             <div className="pdfViewer" />
           </div>
+          {remote && (
+            <div
+              role="status"
+              className={`absolute left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border border-line bg-surface py-1 pl-3 pr-1 text-sm text-ui-fg shadow-lg ${compact ? 'top-16' : 'top-2'}`}
+            >
+              <span className="whitespace-nowrap">{en.reader.continueFrom(remote.deviceLabel ?? en.reader.otherDevice, remote.page)}</span>
+              <button
+                className="min-h-9 rounded-full px-3 font-medium text-accent hover:bg-ui-bg"
+                onClick={() => {
+                  const v = viewerRef.current?.viewer;
+                  const a = remote.anchor;
+                  if (v && container.current) {
+                    scrollToPoint(v, container.current, remote.page, a?.rects[0]?.y ?? 0, a?.rects[0]?.x, getInset());
+                    if (a) useReaderStore.getState().markResume(a);
+                  }
+                  setRemote(null);
+                }}
+              >
+                {en.reader.jump}
+              </button>
+              <button className="min-h-9 rounded-full px-3 hover:bg-ui-bg" onClick={() => setRemote(null)}>
+                {en.reader.stay}
+              </button>
+            </div>
+          )}
           {/* colour-temperature overlay over the reading area, never over chrome or popovers (FR-THM-03) */}
           {warmth > 0 && <div className="mg-warmth" aria-hidden="true" style={{ background: warmthColor(warmth) }} />}
           <Overlays

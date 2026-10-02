@@ -121,3 +121,74 @@ test.describe('page-level resume (T-110, FR-BKM-04)', () => {
     await expect.poll(async () => (await idb<PositionRow>(page, 'positions'))[0]?.page, { timeout: 900 }).toBe(2); // < debounce
   });
 });
+
+test.describe('cross-device resume prompt (T-303, FR-BKM-05)', () => {
+  test.beforeEach(({ browserName }) => test.skip(noIdbBlobs(browserName), 'WinCairo WebKit: no IndexedDB Blobs'));
+
+  /** A newer synced position from another device, as a pull would store it. */
+  async function seedRemote(page: Page, documentId: string, pageNo = 4) {
+    await page.evaluate(
+      (row) =>
+        new Promise<void>((resolve) => {
+          const open = indexedDB.open('marginalia');
+          open.onsuccess = () => {
+            const tx = open.result.transaction('positions', 'readwrite');
+            tx.objectStore('positions').put(row);
+            tx.oncomplete = () => (open.result.close(), resolve());
+          };
+        }),
+      {
+        documentId,
+        page: pageNo,
+        anchor: {
+          v: 1,
+          page: pageNo,
+          rects: [{ x: 0.1, y: 0.3, w: 0.8, h: 0.02 }],
+          quote: { exact: 'line', prefix: '', suffix: '' },
+        },
+        progress: 0.6,
+        deviceId: 'other-device',
+        deviceLabel: 'Pixel 7',
+        updatedAt: new Date(Date.now() + 60_000).toISOString(),
+        localUpdatedAt: 0,
+      },
+    );
+  }
+
+  test('offers the other device’s newer point and jumps only when asked; Stay keeps this device’s place', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await addViaPicker(page, `${TITLE}.pdf`);
+    await expect(page.getByRole('link', { name: new RegExp(TITLE) })).toBeVisible();
+    const [doc] = await idb<{ id: string }>(page, 'documents');
+    await seedRemote(page, doc!.id);
+
+    await openFromLibrary(page);
+    const prompt = page.getByRole('status').filter({ hasText: 'Continue from Pixel 7 (p. 4)?' });
+    await expect(prompt).toBeVisible();
+    await page.waitForTimeout(300);
+    expect((await slot(page))!.page).toBe(1); // never an automatic jump
+    await prompt.getByRole('button', { name: 'Jump' }).click();
+    await expect(prompt).toHaveCount(0);
+    await expect.poll(() => slot(page)).toMatchObject({ page: 4 });
+    expect((await slot(page))!.frac).toBeCloseTo(0.3, 2);
+
+    if (
+      await page
+        .getByRole('toolbar', { name: 'Reader toolbar' })
+        .evaluate((el) => el.getBoundingClientRect().bottom <= 1)
+    ) {
+      const box = (await reader(page).boundingBox())!;
+      await page.touchscreen.tap(box.x + 4, box.y + box.height / 2); // phones: bring the bars back (blank tap)
+    }
+    await page.getByRole('link', { name: 'Library' }).click();
+    await seedRemote(page, doc!.id, 2); // another, newer point elsewhere arrives
+    await openFromLibrary(page);
+    const second = page.getByRole('status').filter({ hasText: 'Continue from Pixel 7 (p. 2)?' });
+    await expect(second).toBeVisible();
+    await second.getByRole('button', { name: 'Stay' }).click();
+    await expect(second).toHaveCount(0);
+    expect((await slot(page))!.page).toBe(4); // this device's own last place (saved after the jump)
+  });
+});
