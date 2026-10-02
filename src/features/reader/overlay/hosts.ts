@@ -1,8 +1,8 @@
 /**
  * Per-page overlay hosts (PRD §8.4). PDF.js owns each page div and its reset() removes foreign children, so
  * the hosts are stable elements re-attached on every (re)render; React portals keep rendering into them.
- *   under: right after .canvasWrapper, before the text layer -> highlights and bands paint above the canvas
- *          but below the selectable text (pointer-events: none)
+ *   under: right after .canvasWrapper (and the dark theme's image-restore layer), before the text layer ->
+ *          highlights and bands paint above the canvas but below the selectable text (pointer-events: none)
  *   over:  last child, above text/link layers -> gutter markers (only the markers take pointer events)
  */
 import { useEffect, useState } from 'react';
@@ -32,7 +32,7 @@ export function usePageHosts(ready: boolean, getViewer: () => Viewer | null): Ma
         all.set(pageNumber, h);
         setHosts(new Map(all));
       }
-      const canvas = div.querySelector(':scope > .canvasWrapper');
+      const canvas = div.querySelector(':scope > .mg-img-restore') ?? div.querySelector(':scope > .canvasWrapper');
       if (canvas && canvas.nextSibling !== h.under) canvas.after(h.under);
       else if (!canvas && h.under.parentNode !== div) div.prepend(h.under);
       if (div.lastChild !== h.over) div.append(h.over);

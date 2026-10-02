@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PALETTE } from '../../core/db/models';
 import { composite, contrastRatio } from '../../shared/utils/contrast';
-import { highlightContrast, THEMES, type ResolvedTheme } from './tokens';
+import { highlightContrast, pageFilter, THEMES, warmthColor, type ResolvedTheme } from './tokens';
 
 describe('theme tokens meet WCAG AA (FR-THM-05, NFR-A11Y-01)', () => {
   for (const [name, t] of Object.entries(THEMES)) {
@@ -21,7 +21,40 @@ describe('theme tokens meet WCAG AA (FR-THM-05, NFR-A11Y-01)', () => {
 describe('highlights stay legible in every theme (FR-THM-05, FR-HLT-02)', () => {
   for (const theme of Object.keys(THEMES) as ResolvedTheme[])
     for (const p of DEFAULT_PALETTE)
-      it(`${theme}: text under ${p.label} (${p.hex}) >= 4.5:1`, () => expect(highlightContrast(theme, p.hex)).toBeGreaterThanOrEqual(4.5));
+      it(`${theme}: text under ${p.label} (${p.hex}) >= 4.5:1`, () =>
+        expect(highlightContrast(theme, p.hex)).toBeGreaterThanOrEqual(4.5));
+});
+
+describe('page recolour filter (ADR 0002)', () => {
+  it('maps black to pageFg and white to pageBg exactly', () => {
+    for (const t of ['warm', 'dark'] as const) {
+      const f = pageFilter(THEMES[t].pageFg, THEMES[t].pageBg);
+      const at = (c: number) =>
+        `#${f
+          .map((ch) =>
+            Math.round((ch.intercept + ch.slope * c) * 255)
+              .toString(16)
+              .padStart(2, '0'),
+          )
+          .join('')}`;
+      expect(at(0)).toBe(THEMES[t].pageFg.toLowerCase());
+      expect(at(1)).toBe(THEMES[t].pageBg.toLowerCase());
+    }
+  });
+});
+
+describe('warmth (FR-THM-03)', () => {
+  it('0 % is a no-op white, 100 % a warm amber; text stays legible over it', () => {
+    expect(warmthColor(0)).toBe('rgb(255 255 255)');
+    expect(warmthColor(100)).toBe('rgb(255 191 102)');
+    expect(warmthColor(250)).toBe(warmthColor(100));
+    for (const t of Object.values(THEMES)) {
+      const amber = '#FFBF66';
+      expect(
+        contrastRatio(composite(amber, t.pageFg, 'multiply', 1), composite(amber, t.pageBg, 'multiply', 1)),
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });
 
 describe('composite', () => {

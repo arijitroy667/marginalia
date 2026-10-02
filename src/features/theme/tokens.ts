@@ -1,5 +1,5 @@
 /** Theme tokens (PRD §8.7, ADR 0002). Single source: applyTheme() writes them as CSS variables. */
-import { composite, contrastRatio } from '../../shared/utils/contrast';
+import { composite, contrastRatio, hexToRgb } from '../../shared/utils/contrast';
 
 export type ThemeId = 'system' | 'light' | 'warm' | 'dark';
 export type ResolvedTheme = Exclude<ThemeId, 'system'>;
@@ -72,4 +72,20 @@ export function highlightContrast(theme: ResolvedTheme, hex: string): number {
   const t = THEMES[theme];
   const wash = (under: string) => composite(hex, under, t.highlightBlend, t.highlightAlpha);
   return contrastRatio(wash(t.pageFg), wash(t.pageBg));
+}
+
+/**
+ * Page recolour (ADR 0002): per-channel linear map c' = fg + (bg - fg) * c, so black -> pageFg and white -> pageBg
+ * exactly. Dark runs it after hue-rotate(180deg), which inverts luminance but keeps hues.
+ */
+export function pageFilter(fg: string, bg: string): { intercept: number; slope: number }[] {
+  const f = hexToRgb(fg);
+  const b = hexToRgb(bg);
+  return f.map((c, i) => ({ intercept: c / 255, slope: (b[i]! - c) / 255 }));
+}
+
+/** Warmth overlay colour for 0-100 % (FR-THM-03): multiplied over the reader, so 0 % is white (no change). */
+export function warmthColor(percent: number): string {
+  const w = Math.min(100, Math.max(0, percent)) / 100;
+  return `rgb(255 ${Math.round(255 - 64 * w)} ${Math.round(255 - 153 * w)})`;
 }

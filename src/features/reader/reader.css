@@ -43,6 +43,33 @@
   padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
 }
 
+/* Document themes (ADR 0002, FR-THM-02): composite-time filter on the page canvases, so switching never
+   re-renders; text, links and our overlays stay unfiltered. Already-dark pages skip the Dark filter. */
+.reader-scroll .pdfViewer .page {
+  --page-bg-color: var(--page-bg);
+}
+:root[data-theme='warm'] .reader-scroll .canvasWrapper {
+  filter: url(#mg-page-warm);
+}
+:root[data-theme='dark'] .reader-scroll .page:not([data-mg-dark]) .canvasWrapper {
+  filter: hue-rotate(180deg) url(#mg-page-dark);
+}
+.mg-img-restore {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.mg-img-restore canvas {
+  position: absolute;
+}
+.mg-warmth {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
 /* Overlay hosts (T-202, PRD §8.4): above the canvas, never drawn into it, so theme/zoom never touch them. */
 .mg-under,
 .mg-over {

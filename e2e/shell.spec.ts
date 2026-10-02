@@ -8,14 +8,15 @@ test.describe('app shell + chrome themes (T-101, FR-THM-01/07)', () => {
 
     await page.getByRole('button', { name: 'Theme' }).focus();
     await page.keyboard.press('Enter');
-    await page.getByRole('menuitemradio', { name: 'Dark' }).focus();
-    await page.keyboard.press('Enter');
+    await page.getByRole('radio', { name: 'Dark' }).focus();
+    await page.keyboard.press('Space');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await page.keyboard.press('Escape'); // the popover stays open for more changes until dismissed
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#1B1B1B');
     await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(27, 27, 27)');
 
     await page.getByRole('button', { name: 'Theme' }).click();
-    await page.getByRole('menuitemradio', { name: 'Warm' }).click();
+    await page.getByRole('radio', { name: 'Warm' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'warm');
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#EFE6CF');
   });
@@ -23,7 +24,7 @@ test.describe('app shell + chrome themes (T-101, FR-THM-01/07)', () => {
   test('chosen theme persists across reloads (Dexie settings, T-104)', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Theme' }).click();
-    await page.getByRole('menuitemradio', { name: 'Warm' }).click();
+    await page.getByRole('radio', { name: 'Warm' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'warm');
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'warm');
@@ -33,7 +34,8 @@ test.describe('app shell + chrome themes (T-101, FR-THM-01/07)', () => {
           const req = indexedDB.open('marginalia');
           req.onsuccess = () => {
             const get = req.result.transaction('meta').objectStore('meta').get('settings');
-            get.onsuccess = () => resolve((get.result as { value: { settings: { theme: string } } }).value.settings.theme);
+            get.onsuccess = () =>
+              resolve((get.result as { value: { settings: { theme: string } } }).value.settings.theme);
           };
         }),
     );

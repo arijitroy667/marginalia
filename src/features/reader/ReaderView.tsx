@@ -10,7 +10,10 @@ import { canHandleSingleKey, isPrimaryChord, isTypingTarget } from '../../shared
 import { BookmarkIcon } from '../../shared/ui/icons';
 import { toast } from '../../shared/ui/toast';
 import { useSettings } from '../settings/useSettings';
+import { PageFilters } from '../theme/PageFilters';
 import { ThemeMenu } from '../theme/ThemeMenu';
+import { warmthColor } from '../theme/tokens';
+import { useResolvedTheme } from '../theme/useTheme';
 import { clearHistory, redo, undo } from './commands';
 import { FindBar } from './FindBar';
 import { applyColour, deleteOnSelection, LineActions, openNoteEditor, quickBookmark } from './LineActions';
@@ -19,6 +22,7 @@ import { Overlays } from './overlay/Overlays';
 import { ensureVisible, moveCursor, useLineTap, useNativeSelection } from './selection/useLineSelection';
 import { useReaderStore } from './store';
 import { usePinch } from './gestures/usePinch';
+import { usePageTheme } from './pageTheme';
 import type { PointerKind } from './gestures/tap';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
 import { createViewer, ZOOM_MAX, ZOOM_MIN, type PdfViewer, type Viewer } from './pdf/viewer';
@@ -85,7 +89,8 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const compactRef = useRef(compact);
   const lastPointer = useRef<PointerKind>('mouse');
   const selection = useReaderStore((s) => s.selection);
-  const { palette } = useSettings();
+  const { palette, warmth, invertImages } = useSettings();
+  const theme = useResolvedTheme();
   const [colourPref, setColourPref] = usePref('reader.colour', COLOUR_SLOTS, '1');
   const active = palette.find((p) => String(p.id) === colourPref)?.id ?? palette[0]?.id ?? 1;
   const setActive = useCallback((id: number) => setColourPref(COLOUR_SLOTS[id - 1] ?? '1'), [setColourPref]);
@@ -254,6 +259,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   useLineTap(ready, getViewer, container, pdf, row.contentHash, onBlankTap, lastPointer);
   useNativeSelection(ready, getViewer, container, pdf, row.contentHash, lastPointer);
   usePinch(ready, getViewer, container);
+  usePageTheme(ready, getViewer, theme, invertImages);
   useAutoHideChrome(compact && ready, container, setChrome);
   useResume({ pagesReady, getViewer, getInset, container, documentId: row.id, pdf, docHash: row.contentHash });
 
@@ -347,6 +353,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
 
   return (
     <div className={`relative flex h-dvh flex-col bg-ui-bg ${compact ? 'reader-compact' : ''}`}>
+      <PageFilters />
       {/* focus inside a hidden bar (keyboard, screen reader) brings the chrome back */}
       <div ref={topBar} onFocus={() => setChrome(true)} className={compact ? `absolute inset-x-0 top-0 z-10 ${slide('-translate-y-full')}` : ''}>
         <header
@@ -402,7 +409,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
           <button className={btn} aria-label={en.reader.find} aria-expanded={finding} onClick={() => setFinding((f) => !f)}>
             ⌕
           </button>
-          {!compact && <ThemeMenu />}
+          {!compact && <ThemeMenu reader />}
         </header>
         {finding && ready && <FindBar getViewer={getViewer} onClose={() => setFinding(false)} />}
       </div>
@@ -424,6 +431,8 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
           <div ref={container} tabIndex={0} aria-label={row.title} className="reader-scroll outline-none">
             <div className="pdfViewer" />
           </div>
+          {/* colour-temperature overlay over the reading area, never over chrome or popovers (FR-THM-03) */}
+          {warmth > 0 && <div className="mg-warmth" aria-hidden="true" style={{ background: warmthColor(warmth) }} />}
           <Overlays
             ready={ready}
             getViewer={getViewer}
@@ -462,7 +471,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
             <BookmarkIcon />
           </button>
           {sidebarToggle}
-          <ThemeMenu />
+          <ThemeMenu reader />
         </div>
       )}
     </div>

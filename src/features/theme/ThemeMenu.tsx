@@ -1,47 +1,82 @@
-import { DropdownMenu } from 'radix-ui';
+import { Popover } from 'radix-ui';
 import { en } from '../../shared/i18n/en';
-import { CheckIcon, ThemeIcon } from '../../shared/ui/icons';
+import { ThemeIcon } from '../../shared/ui/icons';
 import { updateSettings, useSettings } from '../settings/useSettings';
 import type { ThemeId } from './tokens';
 
 const OPTIONS: ThemeId[] = ['system', 'light', 'warm', 'dark'];
 
-/** Theme picker for the app chrome (FR-THM-01); keyboard-reachable Radix menu. */
-export function ThemeMenu() {
-  const { theme } = useSettings();
+/**
+ * Theme popover (FR-THM-01): app and page theme; in the reader also warmth (FR-THM-03) and image inversion in Dark
+ * (FR-THM-02). Native radios, slider and checkbox: keyboard and screen-reader behaviour come with them. They are
+ * uncontrolled (the content remounts on every open): settings are written asynchronously, and a controlled slider
+ * would snap back mid-drag.
+ */
+export function ThemeMenu({ reader = false }: { reader?: boolean }) {
+  const { theme, warmth, invertImages } = useSettings();
+  const row = 'flex min-h-11 items-center gap-2 rounded px-2 hover:bg-ui-bg';
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger
+    <Popover.Root>
+      <Popover.Trigger
         aria-label={en.theme.label}
         className="grid min-h-11 min-w-11 place-items-center rounded-md text-ui-fg hover:bg-ui-bg"
       >
         <ThemeIcon />
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
           align="end"
           sideOffset={6}
-          className="z-50 min-w-40 rounded-lg border border-line bg-surface p-1 text-sm text-ui-fg shadow-lg"
+          collisionPadding={8}
+          aria-label={en.theme.label}
+          className="z-50 flex w-60 flex-col gap-1 rounded-lg border border-line bg-surface p-2 text-sm text-ui-fg shadow-lg"
         >
-          <DropdownMenu.Label className="px-2 py-1 text-xs text-muted">{en.theme.label}</DropdownMenu.Label>
-          <DropdownMenu.RadioGroup value={theme} onValueChange={(v) => void updateSettings({ theme: v as ThemeId })}>
+          <fieldset className="flex flex-col">
+            <legend className="px-2 py-1 text-xs text-muted">{en.theme.label}</legend>
             {OPTIONS.map((id) => (
-              <DropdownMenu.RadioItem
-                key={id}
-                value={id}
-                className="flex min-h-11 cursor-default items-center gap-2 rounded px-2 outline-none data-[highlighted]:bg-ui-bg"
-              >
-                <span className="w-5">
-                  <DropdownMenu.ItemIndicator>
-                    <CheckIcon width={16} height={16} />
-                  </DropdownMenu.ItemIndicator>
-                </span>
+              <label key={id} className={row}>
+                <input
+                  type="radio"
+                  name="mg-theme"
+                  value={id}
+                  defaultChecked={theme === id}
+                  onChange={() => void updateSettings({ theme: id })}
+                  className="accent-[var(--accent)]"
+                />
                 {en.theme[id]}
-              </DropdownMenu.RadioItem>
+              </label>
             ))}
-          </DropdownMenu.RadioGroup>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+          </fieldset>
+          {reader && (
+            <>
+              <label className="flex flex-col gap-1 border-t border-line px-2 pt-2">
+                <span className="flex justify-between text-xs text-muted">
+                  {en.theme.warmth}
+                  <span>{warmth}%</span>
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  defaultValue={warmth}
+                  onChange={(e) => void updateSettings({ warmth: Number(e.target.value) })}
+                  className="min-h-11 accent-[var(--accent)]"
+                />
+              </label>
+              <label className={row}>
+                <input
+                  type="checkbox"
+                  defaultChecked={invertImages}
+                  onChange={(e) => void updateSettings({ invertImages: e.target.checked })}
+                  className="accent-[var(--accent)]"
+                />
+                {en.theme.invertImages}
+              </label>
+            </>
+          )}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }

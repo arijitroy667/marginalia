@@ -16,7 +16,12 @@ function useSystemDark(): boolean {
   );
 }
 
-/** Resolves the user's theme (System follows prefers-color-scheme) and applies it, plus the highlight palette. */
+/** The theme in effect: the user's choice, System following prefers-color-scheme. */
+export function useResolvedTheme(): ResolvedTheme {
+  return resolveTheme(useSettings().theme, useSystemDark());
+}
+
+/** Resolves the user's theme and applies it to the document, plus the highlight palette (app root only). */
 export function useTheme(): ResolvedTheme {
   const { theme, palette } = useSettings();
   const resolved = resolveTheme(theme, useSystemDark());

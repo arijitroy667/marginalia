@@ -16,6 +16,9 @@ export const en = {
     light: 'Light',
     warm: 'Warm',
     dark: 'Dark',
+    page: 'Page',
+    warmth: 'Warmth',
+    invertImages: 'Invert images in Dark',
   },
   errors: {
     title: 'Something went wrong',

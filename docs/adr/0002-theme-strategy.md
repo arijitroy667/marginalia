@@ -65,3 +65,24 @@ scanned (08), scanned + hidden OCR (09), sidebar/mixed (03), diagram-heavy real 
   harmless, but line hit-testing must not depend on the event target being a text span.
 - `pageColors` stays unused unless a future PDF.js version restores render-time colour overrides (re-run S2
   on any `pdfjs-dist` upgrade, R9).
+
+## Implementation (T-209)
+
+- `PageFilters` renders the two `feComponentTransfer` filters from the tokens (`pageFilter(fg, bg)`:
+  intercept = fg, slope = bg − fg per channel; unit-tested to map black → pageFg and white → pageBg exactly).
+  CSS on `:root[data-theme]` applies them to `.reader-scroll .canvasWrapper`; unrendered pages show `pageBg`.
+- `usePageTheme` runs on `pagerendered` and on theme/toggle changes: samples each rendered canvas at 16 × 16
+  (mean luminance < 0.35 ⇒ `data-mg-dark`, no Dark filter) and, in Dark with "Invert images" off, copies image
+  regions (`pdfPage.imageCoordinates`) from the unfiltered canvas into `.mg-img-restore`, kept between the canvas
+  and the highlight host; > 80 % image coverage counts as scanned and stays inverted. Restore canvases are freed
+  with `width = height = 0`.
+- Warmth (FR-THM-03): one `multiply` overlay over the reading area (pages, highlights, markers, line toolbar),
+  never over the app bars or portalled popovers; `rgb(255, 255 − 64w, 255 − 153w)` for w = 0..1. Text over the
+  strongest warmth keeps ≥ 4.5:1 in every theme (unit test). `warmth` and `invertImages` live in the synced
+  settings.
+- The theme picker became a popover with native radios, the warmth slider and the toggle (uncontrolled inputs: the
+  content remounts on open and settings are written asynchronously).
+- Contrast "script in CI" = `src/features/theme/tokens.test.ts` (chrome text/controls, text under every default
+  highlight, text under full warmth), run by `pnpm test` in CI.
+- Measured: theme switch 12–31 ms to the next frame in Chromium (NFR-PERF-05 < 300 ms), same canvas element
+  before/after (no re-render, FR-THM-04).
