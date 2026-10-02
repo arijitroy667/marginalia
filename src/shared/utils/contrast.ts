@@ -18,3 +18,11 @@ export function contrastRatio(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
   return (hi + 0.05) / (lo + 0.05);
 }
+
+const toHex = (rgb: number[]) => `#${rgb.map((c) => Math.round(c).toString(16).padStart(2, '0')).join('')}`;
+
+/** `top` painted over `under` with a CSS blend mode and opacity (sRGB, as browsers composite). */
+export function composite(top: string, under: string, mode: 'multiply' | 'normal', alpha: number): string {
+  const t = hexToRgb(top);
+  return toHex(hexToRgb(under).map((u, i) => alpha * (mode === 'multiply' ? (t[i]! * u) / 255 : t[i]!) + (1 - alpha) * u));
+}

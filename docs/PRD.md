@@ -192,7 +192,7 @@ Each row is independently testable. "AC" = acceptance criteria. Test each AC wit
 |---|---|---|---|
 | FR-HLT-01 | P0 | Highlight a line. | ≤ 2 inputs; ≤ 1 with an active colour (`H` or tapping the active swatch). Drawn in an overlay (SVG/DOM) layer, never baked into the canvas. |
 | FR-HLT-02 | P0 | Default palette of 5 with meanings: Yellow "Key idea", Green "Definition", Blue "Look up", Pink "Disagree / doubt", Purple "Revisit". Up to 8 colours. | Labels ≤ 24 chars; hex editable; contrast of text under every highlight ≥ 4.5:1 in every theme, validated at edit time with a warning. |
-| FR-HLT-03 | P0 | Same colour on an already highlighted line removes it; a different colour replaces it. | Toast with Undo (FR-KEY-06). |
+| FR-HLT-03 | P0 | Same colour on an already highlighted line removes it; a different colour replaces it. | Toast with Undo (FR-KEY-06). "Already highlighted" = a live highlight sharing a visual line with the selection (ADR 0011). |
 | FR-HLT-04 | P0 | Remove a highlight via toolbar, `Delete`/`Backspace`, or the panel. | Tombstoned for sync. |
 | FR-HLT-05 | P1 | Change colour of an existing highlight by clicking it. | Toolbar opens on the highlight. |
 | FR-HLT-06 | P1 | Show/hide highlights per colour meaning; counts per colour in the panel. | Toggle is device-local. |
@@ -997,7 +997,7 @@ Playwright's WebKit is **not** iOS Safari; real-device passes are mandatory at M
 | `↑` `↓` or `K` `J` | Move line cursor (only when a line is selected; otherwise arrows scroll) |
 | `Shift+↑` `Shift+↓` | Extend selection by line (P1) |
 | `H` | Highlight selected line with the active colour |
-| `1`–`8` | With a line selected: apply colour N. With none: set the active colour |
+| `1`–`8` | With a line selected: apply the Nth palette colour (toolbar order). With none: make it the active colour (ADR 0011) |
 | `B` | Quick bookmark (selected line, else reading line); again to remove |
 | `N` | Add/edit note on the selected line |
 | `Delete` / `Backspace` | Remove highlight/bookmark on the selected line (Undo toast) |

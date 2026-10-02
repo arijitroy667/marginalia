@@ -84,3 +84,42 @@ export function docRow(i: number, over: Record<string, unknown> = {}) {
     ...over,
   };
 }
+
+/** Adds a fixture through the picker and opens it in the reader, first page rendered. */
+export async function openDoc(page: Page, fixture: string) {
+  await page.goto('/');
+  await addViaPicker(page, fixture);
+  await page.getByRole('link', { name: new RegExp(fixture.replace('.pdf', '')) }).click();
+  await page.locator('.page[data-page-number="1"] .canvasWrapper canvas').first().waitFor();
+  await page.waitForTimeout(400); // initial fit + resume scroll settle
+}
+
+/** Span index starting each distinct visual row of text on a page, top to bottom. */
+const rowSpans = (page: Page, n: number) =>
+  page.locator(`.page[data-page-number="${n}"] .textLayer span[role="presentation"]`).evaluateAll((els) => {
+    const out = new Map<number, number>();
+    els.forEach((e, i) => {
+      const r = e.getBoundingClientRect();
+      const key = Math.round((r.top + (window.scrollY || 0)) / 4);
+      if (r.width >= 4 && !out.has(key)) out.set(key, i);
+    });
+    return [...out.entries()].sort((a, b) => a[0] - b[0]).map(([, i]) => i);
+  });
+type Pt = { x: number; y: number };
+/**
+ * Centres of rows `ks` of page `n`, after scrolling the first one to the middle of the viewport
+ * (clear of the bottom toast area; measured after the scroll so the points are current).
+ */
+export async function textRows<K extends number[]>(page: Page, n: number, ...ks: K): Promise<{ [I in keyof K]: Pt }> {
+  const spans = page.locator(`.page[data-page-number="${n}"] .textLayer span[role="presentation"]`);
+  const idx = await rowSpans(page, n);
+  await spans.nth(idx.at(ks[0]!)!).evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(150);
+  const pts = await Promise.all(
+    ks.map(async (k) => {
+      const r = (await spans.nth(idx.at(k)!).boundingBox())!;
+      return { x: r.x + Math.min(r.width / 2, 40), y: r.y + r.height / 2 };
+    }),
+  );
+  return pts as { [I in keyof K]: Pt };
+}

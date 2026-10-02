@@ -1,7 +1,8 @@
 /** Theme tokens (PRD §8.7, ADR 0002). Single source: applyTheme() writes them as CSS variables. */
+import { composite, contrastRatio } from '../../shared/utils/contrast';
+
 export type ThemeId = 'system' | 'light' | 'warm' | 'dark';
 export type ResolvedTheme = Exclude<ThemeId, 'system'>;
-export type ColorId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export interface ThemeTokens {
   pageBg: string; // page filter target: white -> pageBg
@@ -14,22 +15,9 @@ export interface ThemeTokens {
   accentFg: string; // text on accent
   border: string; // decorative dividers
   borderStrong: string; // input/control outlines (>= 3:1, WCAG 1.4.11)
-  highlight: Record<ColorId, string>;
-  highlightBlend: 'multiply' | 'normal';
+  highlightBlend: 'multiply' | 'normal'; // how the palette wash (settings, FR-HLT-02) composites over the page
   highlightAlpha: number;
 }
-
-/** Light-theme starting hex for palette slots; users relabel/recolour them (FR-HLT-02). */
-const HIGHLIGHT: Record<ColorId, string> = {
-  1: '#FFE066', // Yellow — Key idea
-  2: '#8FD694', // Green — Definition
-  3: '#7CC4F4', // Blue — Look up
-  4: '#F59BB4', // Pink — Disagree / doubt
-  5: '#C3A6F2', // Purple — Revisit
-  6: '#FFB870',
-  7: '#6FD6C8',
-  8: '#C9C9C9',
-};
 
 export const THEMES: Record<ResolvedTheme, ThemeTokens> = {
   light: {
@@ -43,7 +31,6 @@ export const THEMES: Record<ResolvedTheme, ThemeTokens> = {
     accentFg: '#FFFFFF',
     border: '#D6D3D1',
     borderStrong: '#78716C',
-    highlight: HIGHLIGHT,
     highlightBlend: 'multiply',
     highlightAlpha: 1,
   },
@@ -58,7 +45,6 @@ export const THEMES: Record<ResolvedTheme, ThemeTokens> = {
     accentFg: '#FFFFFF',
     border: '#CDBF9C',
     borderStrong: '#857154',
-    highlight: HIGHLIGHT,
     highlightBlend: 'multiply',
     highlightAlpha: 1,
   },
@@ -73,8 +59,17 @@ export const THEMES: Record<ResolvedTheme, ThemeTokens> = {
     accentFg: '#10213D',
     border: '#3A3836',
     borderStrong: '#8A8580',
-    highlight: HIGHLIGHT,
     highlightBlend: 'normal',
     highlightAlpha: 0.38,
   },
 };
+
+/**
+ * Contrast of page text under a highlight of `hex` in `theme` (FR-THM-05: >= 4.5:1): the wash composites over
+ * both the paper and the glyphs. The palette editor warns below 4.5 (FR-HLT-02).
+ */
+export function highlightContrast(theme: ResolvedTheme, hex: string): number {
+  const t = THEMES[theme];
+  const wash = (under: string) => composite(hex, under, t.highlightBlend, t.highlightAlpha);
+  return contrastRatio(wash(t.pageFg), wash(t.pageBg));
+}

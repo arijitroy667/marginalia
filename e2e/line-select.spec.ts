@@ -1,43 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addViaPicker, noIdbBlobs } from './helpers';
+import { noIdbBlobs, openDoc as open, textRows as rows } from './helpers';
 
-async function open(page: Page, fixture: string) {
-  await page.goto('/');
-  await addViaPicker(page, fixture);
-  await page.getByRole('link', { name: new RegExp(fixture.replace('.pdf', '')) }).click();
-  await expect(page.locator('.page[data-page-number="1"] .canvasWrapper canvas').first()).toBeVisible();
-  await page.waitForTimeout(400); // initial fit + resume scroll settle
-}
-
-/** Span index starting each distinct visual row of text on a page, top to bottom. */
-const rowSpans = (page: Page, n: number) =>
-  page.locator(`.page[data-page-number="${n}"] .textLayer span[role="presentation"]`).evaluateAll((els) => {
-    const out = new Map<number, number>();
-    els.forEach((e, i) => {
-      const r = e.getBoundingClientRect();
-      const key = Math.round((r.top + (window.scrollY || 0)) / 4);
-      if (r.width >= 4 && !out.has(key)) out.set(key, i);
-    });
-    return [...out.entries()].sort((a, b) => a[0] - b[0]).map(([, i]) => i);
-  });
-/**
- * Centres of rows `ks` of page `n`, after scrolling the first one to the middle of the viewport
- * (clear of the bottom toast area; measured after the scroll so the points are current).
- */
-type Pt = { x: number; y: number };
-async function rows<K extends number[]>(page: Page, n: number, ...ks: K): Promise<{ [I in keyof K]: Pt }> {
-  const spans = page.locator(`.page[data-page-number="${n}"] .textLayer span[role="presentation"]`);
-  const idx = await rowSpans(page, n);
-  await spans.nth(idx.at(ks[0]!)!).evaluate((e) => e.scrollIntoView({ block: 'center' }));
-  await page.waitForTimeout(150);
-  const pts = await Promise.all(
-    ks.map(async (k) => {
-      const r = (await spans.nth(idx.at(k)!).boundingBox())!;
-      return { x: r.x + Math.min(r.width / 2, 40), y: r.y + r.height / 2 };
-    }),
-  );
-  return pts as { [I in keyof K]: Pt };
-}
 const band = (page: Page) => page.locator('.mg-selected').first();
 const toolbar = (page: Page) => page.getByRole('toolbar', { name: 'Line actions' });
 
@@ -121,6 +84,21 @@ test.describe('line selection (T-203, FR-LIN-01..04, 06, 07)', () => {
     const pageBox = (await page.locator('.page[data-page-number="1"]').boundingBox())!;
     await page.touchscreen.tap(pageBox.x + pageBox.width / 2, pageBox.y + pageBox.height - 12); // bottom margin: no text
     await expect(page.locator('.mg-selected')).toHaveCount(0);
+  });
+
+  test('phones: a line at the top edge gets its toolbar below it, on the page', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'narrow page');
+    await open(page, '01-single-column-prose.pdf');
+    const [r] = await rows(page, 1, 8);
+    await page.locator('.reader-scroll').evaluate((el, dy) => (el.scrollTop += dy), r.y - 14); // the line now sits at the top edge
+    await page.waitForTimeout(400); // bars slide away on scroll down
+    await page.touchscreen.tap(r.x, 14);
+    await expect(toolbar(page)).toBeVisible();
+    const b = (await toolbar(page).boundingBox())!;
+    const p1 = (await page.locator('.page[data-page-number="1"]').boundingBox())!;
+    expect(b.y).toBeGreaterThan(14); // no room above: flipped below the line
+    expect(b.x).toBeGreaterThanOrEqual(p1.x); // centred on the page, never off its edge
+    expect(b.x + b.width).toBeLessThanOrEqual(p1.x + p1.width + 0.5);
   });
 
   test('scanned pages show the no-text banner and select nothing (FR-LIN-06)', async ({ page }) => {

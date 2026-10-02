@@ -52,3 +52,16 @@ export function sameLine(a: Anchor, b: Anchor): boolean {
   if (a.page !== b.page || !r || !s) return false;
   return Math.min(r.y + r.h, s.y + s.h) - Math.max(r.y, s.y) >= Math.min(r.h, s.h) / 2;
 }
+
+/**
+ * Do two anchors share a visual line? Some rect pair overlaps horizontally and vertically by >= half the
+ * smaller height (the Line Engine's rule), so the other column at the same height never matches (FR-HLT-03).
+ */
+export function intersects(a: Anchor, b: Anchor): boolean {
+  if (a.page !== b.page) return false;
+  return a.rects.some((r) =>
+    b.rects.some(
+      (s) => Math.min(r.x + r.w, s.x + s.w) > Math.max(r.x, s.x) && Math.min(r.y + r.h, s.y + s.h) - Math.max(r.y, s.y) >= Math.min(r.h, s.h) / 2,
+    ),
+  );
+}

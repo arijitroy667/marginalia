@@ -73,9 +73,31 @@ export const PositionRowSchema = z.object({
 });
 export type PositionRow = z.infer<typeof PositionRowSchema>;
 
+/** A highlight colour and its meaning (FR-HLT-02). Annotations store the slot `id`, never the hex. */
+export const PaletteEntrySchema = z.object({
+  id: z.number().int().min(1).max(8),
+  hex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  label: z.string().min(1).max(24),
+});
+export type PaletteEntry = z.infer<typeof PaletteEntrySchema>;
+
+export const DEFAULT_PALETTE: readonly PaletteEntry[] = [
+  { id: 1, hex: '#FFE066', label: 'Key idea' },
+  { id: 2, hex: '#8FD694', label: 'Definition' },
+  { id: 3, hex: '#7CC4F4', label: 'Look up' },
+  { id: 4, hex: '#F59BB4', label: 'Disagree / doubt' },
+  { id: 5, hex: '#C3A6F2', label: 'Revisit' },
+];
+
 /** profiles.settings JSON. Loose: keys written by newer clients survive a whole-row LWW push. */
 export const SettingsSchema = z.looseObject({
   theme: z.enum(['system', 'light', 'warm', 'dark']).default('system'),
+  palette: z
+    .array(PaletteEntrySchema)
+    .min(1)
+    .max(8)
+    .refine((p) => new Set(p.map((e) => e.id)).size === p.length, 'palette ids must be unique')
+    .default(() => DEFAULT_PALETTE.map((e) => ({ ...e }))),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 export const DEFAULT_SETTINGS: Settings = SettingsSchema.parse({});

@@ -24,7 +24,7 @@ export function PageLayers({ hosts, rotation, highlights, hover, selected, marke
         <svg className="mg-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
           {highlights.map((h) =>
             h.anchor.rects.map((r, i) => (
-              <rect key={`${h.id}:${i}`} className="mg-hl" data-id={h.id} style={{ fill: `var(--hl-${h.colorId ?? 1})` }} {...svgRect(r, rotation)} />
+              <rect key={`${h.id}:${i}`} className="mg-hl" data-id={h.id} style={{ fill: `var(--hl-${h.colorId ?? 1}, #c9c9c9)` }} {...svgRect(r, rotation)} />
             )),
           )}
           {hover && <rect className="mg-hover" {...svgRect(hover, rotation)} />}

@@ -125,4 +125,14 @@ describe('positionsRepo / settingsRepo', () => {
     expect((s as Record<string, unknown>).futureKey).toBe(1);
     expect(await db.outbox.where('entity').equals('settings').count()).toBe(1);
   });
+
+  it('palette defaults to the five meanings and rejects bad entries (FR-HLT-02)', async () => {
+    expect((await settingsRepo.get()).palette.map((p) => p.label)).toEqual(['Key idea', 'Definition', 'Look up', 'Disagree / doubt', 'Revisit']);
+    const long = { id: 1, hex: '#FFE066', label: 'x'.repeat(25) };
+    await expect(settingsRepo.update({ palette: [long] })).rejects.toThrow();
+    await expect(settingsRepo.update({ palette: [{ id: 1, hex: 'yellow', label: 'Key' }] })).rejects.toThrow();
+    await expect(settingsRepo.update({ palette: [{ id: 2, hex: '#000000', label: 'a' }, { id: 2, hex: '#FFFFFF', label: 'b' }] })).rejects.toThrow();
+    await settingsRepo.update({ palette: [{ id: 3, hex: '#7CC4F4', label: 'Look up' }] });
+    expect((await settingsRepo.get()).palette).toEqual([{ id: 3, hex: '#7CC4F4', label: 'Look up' }]);
+  });
 });

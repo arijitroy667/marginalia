@@ -4,11 +4,13 @@ import type { DocumentRow } from '../../core/db/models';
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery';
 import { usePref } from '../../shared/hooks/usePref';
 import { en } from '../../shared/i18n/en';
-import { canHandleSingleKey, isPrimaryChord } from '../../shared/utils/keys';
+import { canHandleSingleKey, isPrimaryChord, isTypingTarget } from '../../shared/utils/keys';
 import { toast } from '../../shared/ui/toast';
-import { platform } from '../../core/platform';
+import { useSettings } from '../settings/useSettings';
 import { ThemeMenu } from '../theme/ThemeMenu';
+import { clearHistory, redo, undo } from './commands';
 import { FindBar } from './FindBar';
+import { applyColour, deleteOnSelection, LineActions } from './LineActions';
 import { Overlays } from './overlay/Overlays';
 import { ensureVisible, moveCursor, useLineTap, useNativeSelection } from './selection/useLineSelection';
 import { useReaderStore } from './store';
@@ -28,6 +30,7 @@ const setZoom = (v: PdfViewer, value: string) => void (v.currentScaleValue = val
 const rotate = (v: PdfViewer) => void (v.pagesRotation = (v.pagesRotation + 90) % 360); // view only (FR-RDR-09)
 
 const SIDEBAR = ['open', 'closed'] as const;
+const COLOUR_SLOTS = ['1', '2', '3', '4', '5', '6', '7', '8'] as const; // active highlight colour: device-local UI pref
 const PRESET_VALUES = new Set(['page-width', 'page-fit', 'auto']);
 
 function zoomStep(v: PdfViewer, dir: 1 | -1) {
@@ -78,6 +81,10 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const compactRef = useRef(compact);
   const lastPointer = useRef<PointerKind>('mouse');
   const selection = useReaderStore((s) => s.selection);
+  const { palette } = useSettings();
+  const [colourPref, setColourPref] = usePref('reader.colour', COLOUR_SLOTS, '1');
+  const active = palette.find((p) => String(p.id) === colourPref)?.id ?? palette[0]?.id ?? 1;
+  const setActive = useCallback((id: number) => setColourPref(COLOUR_SLOTS[id - 1] ?? '1'), [setColourPref]);
   const pages = pdf.numPages;
   const getViewer = useCallback(() => viewerRef.current, []); // stable: effects keyed on it must not re-run per render
   // reading slot = viewport top + chrome overlaying the page + 8 px (PRD §5); read from layout, so it stays stable
@@ -116,6 +123,12 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     if (!ready || !v) return;
     const onKey = (e: KeyboardEvent) => {
       if (isPrimaryChord(e)) {
+        if ((e.key === 'z' || e.key === 'Z') && !isTypingTarget(e.target)) {
+          // annotation undo/redo (FR-KEY-06); text fields keep their own undo
+          e.preventDefault();
+          void (e.shiftKey ? redo() : undo()).catch(() => toast(en.reader.undoFailed));
+          return;
+        }
         if (e.key === '=' || e.key === '+') zoomStep(v, 1);
         else if (e.key === '-') zoomStep(v, -1);
         else if (e.key === '0') v.currentScaleValue = 'page-width';
@@ -130,6 +143,24 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
         useReaderStore.getState().select(null);
         window.getSelection()?.removeAllRanges();
         e.preventDefault();
+        return;
+      }
+      // highlights (FR-HLT-01/04, Appendix A): H = active colour; 1-8 = Nth swatch, or set the active colour
+      const swatch = /^[1-8]$/.test(e.key) ? palette[Number(e.key) - 1] : undefined;
+      if (sel && (e.key === 'h' || e.key === 'H' || swatch)) {
+        e.preventDefault();
+        void applyColour(row.id, swatch?.id ?? active, palette, setActive);
+        return;
+      }
+      if (swatch) {
+        e.preventDefault();
+        setActive(swatch.id);
+        toast(en.reader.activeColour(swatch.label));
+        return;
+      }
+      if (sel && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault();
+        void deleteOnSelection(row.id);
         return;
       }
       const dir = { ArrowDown: 1, j: 1, J: 1, ArrowUp: -1, k: -1, K: -1 }[e.key] as 1 | -1 | undefined;
@@ -157,7 +188,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ready, setSidebar, pdf, row.contentHash]);
+  }, [ready, setSidebar, pdf, row.contentHash, row.id, palette, active, setActive]);
 
   // Ctrl/Cmd + wheel (and trackpad pinch) zooms around the pointer; PDF.js rounds scale to 0.01, so accumulate.
   useEffect(() => {
@@ -183,6 +214,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     compactRef.current = compact;
   }, [compact]);
   useEffect(() => () => useReaderStore.getState().select(null), []); // selection never outlives the reader
+  useEffect(() => clearHistory(), [row.id]); // undo history is per document (FR-KEY-06)
   const onBlankTap = useCallback(() => compactRef.current && setChrome((c) => !c), []); // phones: tap blank toggles chrome
   useLineTap(ready, getViewer, container, pdf, row.contentHash, onBlankTap, lastPointer);
   useNativeSelection(ready, getViewer, container, pdf, row.contentHash, lastPointer);
@@ -360,26 +392,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
             documentId={row.id}
             docHash={row.contentHash}
             rotation={rotation}
-            toolbar={
-              <>
-                <button
-                  onClick={() =>
-                    selection && void platform.copyText(selection.text).then((ok) => toast(ok ? en.reader.copied : en.reader.copyFailed))
-                  }
-                >
-                  {en.reader.copy}
-                </button>
-                <button
-                  aria-label={en.reader.clearSelection}
-                  onClick={() => {
-                    useReaderStore.getState().select(null);
-                    window.getSelection()?.removeAllRanges();
-                  }}
-                >
-                  ✕
-                </button>
-              </>
-            }
+            toolbar={selection && <LineActions documentId={row.id} selection={selection} palette={palette} active={active} setActive={setActive} />}
           />
         </div>
       </div>

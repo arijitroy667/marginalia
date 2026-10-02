@@ -106,6 +106,12 @@ export const annotationsRepo = {
   restore(id: string): Promise<AnnotationRow> {
     return annotationsRepo.update(id, { deletedAt: null });
   },
+
+  /** Live (not tombstoned) annotations on one page. */
+  async onPage(documentId: string, page: number): Promise<AnnotationRow[]> {
+    const rows = await db.annotations.where('[documentId+page]').equals([documentId, page]).toArray();
+    return rows.filter((a) => a.deletedAt === null);
+  },
 };
 
 export const positionsRepo = {

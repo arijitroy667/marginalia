@@ -2,7 +2,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { AnchorSchema } from '../db/models';
 import { buildPageLines, type RawTextItem } from '../line-engine';
-import { anchorFromLine, anchorFromSelection, markerY, pageAnchor, quoteAt, sameLine } from './anchor';
+import { anchorFromLine, anchorFromSelection, intersects, markerY, pageAnchor, quoteAt, sameLine } from './anchor';
 
 const SIZE = { width: 600, height: 800 };
 const item = (str: string, x: number, base: number, w = 240): RawTextItem => ({
@@ -50,5 +50,19 @@ describe('anchors (PRD §8.6)', () => {
     expect(markerY(a)).toBeCloseTo(a.rects[0]!.y + a.rects[0]!.h / 2);
     expect(sameLine(a, anchorFromLine(pl, pl.lines[0]!))).toBe(true);
     expect(sameLine(a, anchorFromLine(pl, pl.lines[1]!))).toBe(false);
+  });
+});
+
+describe('intersects (FR-HLT-03)', () => {
+  const at = (page: number, ...rects: { x: number; y: number; w: number; h: number }[]) => ({ ...pageAnchor(page), rects });
+  const band = { x: 0.1, y: 0.2, w: 0.35, h: 0.02 };
+  it('matches a sub-line rect and any line of a multi-line anchor', () => {
+    expect(intersects(at(1, band), at(1, { x: 0.2, y: 0.203, w: 0.05, h: 0.014 }))).toBe(true);
+    expect(intersects(at(1, { x: 0.1, y: 0.18, w: 0.3, h: 0.02 }, band), at(1, band))).toBe(true);
+  });
+  it('rejects the other column, the next line, and other pages', () => {
+    expect(intersects(at(1, band), at(1, { ...band, x: 0.55 }))).toBe(false);
+    expect(intersects(at(1, band), at(1, { ...band, y: 0.22 }))).toBe(false);
+    expect(intersects(at(1, band), at(2, band))).toBe(false);
   });
 });
