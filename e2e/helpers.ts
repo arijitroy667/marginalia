@@ -112,6 +112,11 @@ type Pt = { x: number; y: number };
  */
 export async function textRows<K extends number[]>(page: Page, n: number, ...ks: K): Promise<{ [I in keyof K]: Pt }> {
   const spans = page.locator(`.page[data-page-number="${n}"] .textLayer span[role="presentation"]`);
+  if ((await spans.count()) === 0) {
+    // PDF.js renders text layers only near the viewport
+    await page.locator(`.page[data-page-number="${n}"]`).evaluate((e) => e.scrollIntoView({ block: 'start' }));
+    await spans.first().waitFor();
+  }
   const idx = await rowSpans(page, n);
   await spans.nth(idx.at(ks[0]!)!).evaluate((e) => e.scrollIntoView({ block: 'center' }));
   await page.waitForTimeout(150);

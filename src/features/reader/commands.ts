@@ -1,5 +1,5 @@
 /**
- * Annotation commands with undo/redo (FR-HLT-01..04, FR-KEY-06). Writes go through annotationsRepo (rule 3);
+ * Annotation commands with undo/redo (FR-HLT-01..04, FR-BKM-01/02, FR-KEY-06). Writes go through annotationsRepo (rule 3);
  * undoing a delete restores the same id, so devices converge. History: 50 steps, in memory. Commands run one
  * at a time, so a fast double key press can never create the same highlight twice.
  */
@@ -66,8 +66,14 @@ export function clearHistory(): void {
   undone = [];
 }
 
-const onLine = async (documentId: string, anchor: Anchor, kind: AnnotationKind) =>
-  (await annotationsRepo.onPage(documentId, anchor.page)).filter((a) => a.kind === kind && intersects(a.anchor, anchor));
+const onLine = async (documentId: string, anchor: Anchor, ...kinds: AnnotationKind[]) =>
+  (await annotationsRepo.onPage(documentId, anchor.page)).filter((a) => kinds.includes(a.kind) && intersects(a.anchor, anchor));
+
+const created = (id: string) => record({ undo: () => annotationsRepo.remove(id), redo: () => annotationsRepo.restore(id) });
+const removed = async (id: string) => {
+  await annotationsRepo.remove(id);
+  return record({ undo: () => annotationsRepo.restore(id), redo: () => annotationsRepo.remove(id) });
+};
 
 export type HighlightOp = 'created' | 'replaced' | 'removed';
 
@@ -78,12 +84,9 @@ export const toggleHighlight = (documentId: string, anchor: Anchor, colorId: num
     const hit = hits.find((h) => h.colorId === colorId) ?? hits[0];
     if (!hit) {
       const row = await annotationsRepo.create({ id: crypto.randomUUID(), documentId, kind: 'highlight', page: anchor.page, anchor, colorId, body: null, label: null });
-      return { op: 'created', command: record({ undo: () => annotationsRepo.remove(row.id), redo: () => annotationsRepo.restore(row.id) }) };
+      return { op: 'created', command: created(row.id) };
     }
-    if (hit.colorId === colorId) {
-      await annotationsRepo.remove(hit.id);
-      return { op: 'removed', command: record({ undo: () => annotationsRepo.restore(hit.id), redo: () => annotationsRepo.remove(hit.id) }) };
-    }
+    if (hit.colorId === colorId) return { op: 'removed', command: await removed(hit.id) };
     const from = hit.colorId;
     await annotationsRepo.update(hit.id, { colorId });
     return {
@@ -92,13 +95,33 @@ export const toggleHighlight = (documentId: string, anchor: Anchor, colorId: num
     };
   });
 
-/** Delete/Backspace: tombstone the highlights on the selected line(s) as one undoable step (FR-HLT-04). */
-export const removeHighlights = (documentId: string, anchor: Anchor): Promise<Command | null> =>
+/** Quick bookmark (FR-BKM-01): bookmark the line, or remove the bookmark already on it. */
+export const toggleBookmark = (documentId: string, anchor: Anchor, label: string | null): Promise<{ op: 'created' | 'removed'; command: Command }> =>
   serial(async () => {
-    const ids = (await onLine(documentId, anchor, 'highlight')).map((h) => h.id);
+    const hit = (await onLine(documentId, anchor, 'bookmark'))[0];
+    if (hit) return { op: 'removed', command: await removed(hit.id) };
+    const row = await annotationsRepo.create({ id: crypto.randomUUID(), documentId, kind: 'bookmark', page: anchor.page, anchor, colorId: null, body: null, label });
+    return { op: 'created', command: created(row.id) };
+  });
+
+/** Bookmark label edit (FR-BKM-02); `null` falls back to the line's quote in lists. */
+export const setLabel = (id: string, from: string | null, to: string | null): Promise<Command> =>
+  serial(async () => {
+    await annotationsRepo.update(id, { label: to });
+    return record({ undo: () => annotationsRepo.update(id, { label: from }), redo: () => annotationsRepo.update(id, { label: to }) });
+  });
+
+/** Tombstone one annotation (marker popover Delete), undoable. */
+export const removeAnnotation = (id: string): Promise<Command> => serial(() => removed(id));
+
+/** Delete/Backspace: tombstone the highlights and bookmarks on the selected line(s) as one step (FR-HLT-04). */
+export const removeOnLine = (documentId: string, anchor: Anchor): Promise<{ command: Command; kinds: AnnotationKind[] } | null> =>
+  serial(async () => {
+    const hits = await onLine(documentId, anchor, 'highlight', 'bookmark');
+    const ids = hits.map((h) => h.id);
     if (!ids.length) return null;
     for (const id of ids) await annotationsRepo.remove(id);
-    return record({
+    const command = record({
       undo: async () => {
         for (const id of ids) await annotationsRepo.restore(id);
       },
@@ -106,4 +129,5 @@ export const removeHighlights = (documentId: string, anchor: Anchor): Promise<Co
         for (const id of ids) await annotationsRepo.remove(id);
       },
     });
+    return { command, kinds: [...new Set(hits.map((h) => h.kind))] };
   });

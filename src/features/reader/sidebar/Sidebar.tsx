@@ -1,14 +1,25 @@
 import { Tabs } from 'radix-ui';
 import { useEffect, useState } from 'react';
+import type { Anchor } from '../../../core/anchors/types';
 import { en } from '../../../shared/i18n/en';
 import type { PDFDocumentProxy } from '../pdf/pdfjs';
+import { Bookmarks } from './Bookmarks';
 import { Outline, type OutlineItem } from './Outline';
 import { revokeThumbnails, Thumbnails } from './Thumbnails';
 
 const tab = 'min-h-11 flex-1 border-b-2 border-transparent px-3 text-sm text-muted data-[state=active]:border-accent data-[state=active]:font-medium data-[state=active]:text-ui-fg';
 
-/** Pages (thumbnails) and Contents (outline) tabs; annotation tabs join in T-208. */
-export function Sidebar({ pdf, current, onPage, onOutline }: { pdf: PDFDocumentProxy; current: number; onPage: (n: number) => void; onOutline: (item: OutlineItem) => void }) {
+interface Props {
+  pdf: PDFDocumentProxy;
+  documentId: string;
+  current: number;
+  onPage: (n: number) => void;
+  onOutline: (item: OutlineItem) => void;
+  onJump: (anchor: Anchor) => void;
+}
+
+/** Pages (thumbnails), Contents (outline) and Bookmarks tabs; the other annotation tabs join in T-208. */
+export function Sidebar({ pdf, documentId, current, onPage, onOutline, onJump }: Props) {
   const [outline, setOutline] = useState<OutlineItem[]>([]);
   const [aspect, setAspect] = useState(1.3);
 
@@ -36,12 +47,18 @@ export function Sidebar({ pdf, current, onPage, onOutline }: { pdf: PDFDocumentP
             {en.reader.contents}
           </Tabs.Trigger>
         )}
+        <Tabs.Trigger value="bookmarks" className={tab}>
+          {en.reader.bookmarks}
+        </Tabs.Trigger>
       </Tabs.List>
       <Tabs.Content value="pages" className="min-h-0 flex-1 overflow-auto outline-none">
         <Thumbnails pdf={pdf} current={current} aspect={aspect} onSelect={onPage} />
       </Tabs.Content>
       <Tabs.Content value="contents" className="min-h-0 flex-1 overflow-auto p-2 outline-none">
         <Outline items={outline} onNavigate={onOutline} />
+      </Tabs.Content>
+      <Tabs.Content value="bookmarks" className="min-h-0 flex-1 overflow-auto outline-none">
+        <Bookmarks documentId={documentId} onJump={onJump} />
       </Tabs.Content>
     </Tabs.Root>
   );

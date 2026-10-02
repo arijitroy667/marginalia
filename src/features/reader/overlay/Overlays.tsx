@@ -7,6 +7,7 @@ import { getPageLines } from '../lines/pageLines';
 import type { PDFDocumentProxy } from '../pdf/pdfjs';
 import type { Viewer } from '../pdf/viewer';
 import { useReaderStore } from '../store';
+import { BookmarkMarker } from './BookmarkMarker';
 import { usePageHosts } from './hosts';
 import { LineToolbar } from './LineToolbar';
 import { PageLayers } from './PageLayers';
@@ -28,14 +29,15 @@ export function Overlays({ ready, getViewer, container, pdf, documentId, docHash
   const hosts = usePageHosts(ready, getViewer);
   const hover = useHoverBand(ready, getViewer, container, pdf, docHash);
   const selection = useReaderStore((s) => s.selection);
+  const flash = useReaderStore((s) => s.flash);
   const [textless, setTextless] = useState<ReadonlySet<number>>(new Set());
   const annotations = useLiveQuery(
     () => db.annotations.where('documentId').equals(documentId).filter((a) => a.deletedAt === null).toArray(),
     [documentId],
   );
-  const highlightsByPage = useMemo(() => {
-    const m = new Map<number, AnnotationRow[]>();
-    for (const a of annotations ?? []) if (a.kind === 'highlight') m.set(a.page, [...(m.get(a.page) ?? []), a]);
+  const byPage = useMemo(() => {
+    const m = new Map<string, AnnotationRow[]>();
+    for (const a of annotations ?? []) m.set(`${a.kind}:${a.page}`, [...(m.get(`${a.kind}:${a.page}`) ?? []), a]);
     return m;
   }, [annotations]);
 
@@ -56,9 +58,11 @@ export function Overlays({ ready, getViewer, container, pdf, documentId, docHash
       key={page}
       hosts={h}
       rotation={rotation}
-      highlights={highlightsByPage.get(page) ?? []}
+      highlights={byPage.get(`highlight:${page}`) ?? []}
       hover={hover?.page === page && selection?.page !== page ? hover.band : undefined}
       selected={selection?.page === page ? selection.anchor.rects : undefined}
+      flash={flash?.page === page ? flash : undefined}
+      markers={(byPage.get(`bookmark:${page}`) ?? []).map((b) => ({ key: b.id, anchor: b.anchor, node: <BookmarkMarker row={b} /> }))}
       banner={textless.has(page) ? en.reader.noTextLayer : undefined}
     />
   )).concat(

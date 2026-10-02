@@ -4,11 +4,14 @@ import type { PaletteEntry } from '../../core/db/models';
 import { annotationsRepo } from '../../core/db/repos';
 import { platform } from '../../core/platform';
 import { en } from '../../shared/i18n/en';
+import { BookmarkIcon } from '../../shared/ui/icons';
 import { toast } from '../../shared/ui/toast';
-import { removeHighlights, toggleHighlight, undoCommand, type Command } from './commands';
+import { removeOnLine, toggleBookmark, toggleHighlight, undoCommand, type Command } from './commands';
+import type { LineTarget } from './navigation';
 import { useReaderStore, type Selection } from './store';
 
-const undoable = (c: Command) => ({ label: en.common.undo, run: () => void undoCommand(c).catch(() => toast(en.reader.undoFailed)) });
+/** Toast action that reverts exactly this step (FR-KEY-06). */
+export const undoable = (c: Command) => ({ label: en.common.undo, run: () => void undoCommand(c).catch(() => toast(en.reader.undoFailed)) });
 
 const clearSelection = () => {
   useReaderStore.getState().select(null);
@@ -33,13 +36,27 @@ export async function applyColour(documentId: string, colorId: number, palette: 
   }
 }
 
-/** Delete/Backspace on a selection: remove its highlights, one Undo step (FR-HLT-04). */
+/** Quick bookmark (FR-BKM-01/02): toggles a bookmark on the target line, labelled with its first 60 characters. */
+export async function quickBookmark(documentId: string, target: LineTarget | null): Promise<void> {
+  if (!target) return;
+  try {
+    const { op, command } = await toggleBookmark(documentId, target.anchor, target.text.trim().slice(0, 60) || null);
+    toast(op === 'created' ? en.reader.bookmarked(target.anchor.page) : en.reader.bookmarkRemoved, undoable(command));
+  } catch {
+    toast(en.reader.saveFailed);
+  }
+}
+
+/** Delete/Backspace on a selection: remove its highlights and bookmarks, one Undo step (FR-HLT-04, Appendix A). */
 export async function deleteOnSelection(documentId: string): Promise<void> {
   const sel = useReaderStore.getState().selection;
   if (!sel) return;
   try {
-    const command = await removeHighlights(documentId, sel.anchor);
-    if (command) toast(en.reader.highlightRemoved, undoable(command));
+    const res = await removeOnLine(documentId, sel.anchor);
+    if (!res) return;
+    const [only] = res.kinds;
+    const msg = res.kinds.length > 1 ? en.reader.removedOnLine : only === 'bookmark' ? en.reader.bookmarkRemoved : en.reader.highlightRemoved;
+    toast(msg, undoable(res.command));
   } catch {
     toast(en.reader.saveFailed);
   }
@@ -51,14 +68,20 @@ interface Props {
   palette: readonly PaletteEntry[];
   active: number;
   setActive: (id: number) => void;
+  compact: boolean;
 }
 
-/** Line toolbar contents (FR-LIN-01, §10.2): palette swatches | Copy, Close. */
-export function LineActions({ documentId, selection, palette, active, setActive }: Props) {
-  const applied = useLiveQuery(
-    async () => (await annotationsRepo.onPage(documentId, selection.page)).find((a) => a.kind === 'highlight' && intersects(a.anchor, selection.anchor))?.colorId ?? null,
+/**
+ * Line toolbar contents (FR-LIN-01, §10.2/§10.3): palette swatches | Bookmark, Copy, Close. Phones show
+ * swatches | Bookmark only: long-press gives the system Copy, and a tap on blank space closes.
+ */
+export function LineActions({ documentId, selection, palette, active, setActive, compact }: Props) {
+  const onLine = useLiveQuery(
+    async () => (await annotationsRepo.onPage(documentId, selection.page)).filter((a) => a.kind !== 'note' && intersects(a.anchor, selection.anchor)),
     [documentId, selection],
   );
+  const applied = onLine?.find((a) => a.kind === 'highlight')?.colorId ?? null;
+  const bookmarked = onLine?.some((a) => a.kind === 'bookmark') ?? false;
   return (
     <>
       <span role="group" aria-label={en.reader.colours} className="mg-swatches">
@@ -77,10 +100,24 @@ export function LineActions({ documentId, selection, palette, active, setActive 
         ))}
       </span>
       <span className="mg-sep" aria-hidden="true" />
-      <button onClick={() => void platform.copyText(selection.text).then((ok) => toast(ok ? en.reader.copied : en.reader.copyFailed))}>{en.reader.copy}</button>
-      <button aria-label={en.reader.clearSelection} onClick={clearSelection}>
-        ✕
+      <button
+        aria-label={en.reader.bookmark}
+        aria-pressed={bookmarked}
+        title={`${en.reader.bookmark} (B)`}
+        className="mg-icon-btn"
+        onClick={() => void quickBookmark(documentId, selection)}
+      >
+        <BookmarkIcon fill={bookmarked ? 'currentColor' : 'none'} />
+        {!compact && <span aria-hidden="true">{en.reader.bookmark}</span>}
       </button>
+      {!compact && (
+        <>
+          <button onClick={() => void platform.copyText(selection.text).then((ok) => toast(ok ? en.reader.copied : en.reader.copyFailed))}>{en.reader.copy}</button>
+          <button aria-label={en.reader.clearSelection} onClick={clearSelection}>
+            ✕
+          </button>
+        </>
+      )}
     </>
   );
 }

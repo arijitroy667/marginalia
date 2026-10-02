@@ -160,6 +160,65 @@
   font-weight: 700;
   text-shadow: 0 0 2px #fff;
 }
+.mg-toolbar .mg-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.mg-toolbar .mg-icon-btn[aria-pressed='true'] {
+  color: var(--accent);
+}
+/* Gutter ribbon (FR-BKM-02): 28 px target on desktop, 44 px on touch (NFR-A11Y). */
+.mg-ribbon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 28px;
+  color: var(--accent);
+}
+@media (pointer: coarse) {
+  .mg-ribbon::before {
+    content: '';
+    position: absolute;
+    inset: -8px -10px;
+  }
+}
+.mg-popover {
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(18rem, calc(100vw - 16px));
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ui-fg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+}
+/* Jump target pulse, 1.2 s (PRD §10.4) */
+.mg-flash {
+  fill: var(--accent);
+  fill-opacity: 0;
+  animation: mg-pulse 1.2s ease-out;
+}
+@keyframes mg-pulse {
+  0%,
+  45% {
+    fill-opacity: 0.32;
+  }
+  100% {
+    fill-opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-flash {
+    animation: none;
+    fill-opacity: 0.24;
+  }
+}
 .mg-sep {
   width: 1px;
   align-self: stretch;

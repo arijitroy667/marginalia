@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Anchor, NRect } from '../../core/anchors/types';
 import { db } from '../../core/db/schema';
-import { clearHistory, HISTORY_LIMIT, redo, removeHighlights, toggleHighlight, undo, undoCommand } from './commands';
+import { clearHistory, HISTORY_LIMIT, redo, removeOnLine, setLabel, toggleBookmark, toggleHighlight, undo, undoCommand } from './commands';
 
 const DOC = '00000000-0000-4000-8000-000000000001';
 const line = (y: number, x = 0.1, w = 0.35): NRect => ({ x, y, w, h: 0.02 });
@@ -97,13 +97,37 @@ describe('undo / redo (FR-KEY-06)', () => {
     expect(await redo()).toBe(false); // a was not the latest step
   });
 
-  it('Delete removes every highlight on the line as one step', async () => {
+  it('Delete removes every highlight and bookmark on the line as one step', async () => {
     await toggleHighlight(DOC, at(line(0.5, 0.1, 0.1)), 1);
     await toggleHighlight(DOC, at(line(0.5, 0.3, 0.1)), 2);
-    expect(await removeHighlights(DOC, at(line(0.5, 0.1, 0.4)))).not.toBeNull();
+    await toggleBookmark(DOC, at(line(0.5)), 'mark');
+    expect((await removeOnLine(DOC, at(line(0.5, 0.1, 0.4))))?.kinds.sort()).toEqual(['bookmark', 'highlight']);
     expect(await live()).toEqual([]);
     await undo();
-    expect(await live()).toHaveLength(2);
-    expect(await removeHighlights(DOC, at(line(0.7)))).toBeNull();
+    expect(await live()).toHaveLength(3);
+    expect(await removeOnLine(DOC, at(line(0.7)))).toBeNull();
+  });
+});
+
+describe('bookmarks (FR-BKM-01/02)', () => {
+  it('B on a line bookmarks it, B again removes it; independent of a highlight on the same line', async () => {
+    await toggleHighlight(DOC, at(line(0.3)), 1);
+    expect((await toggleBookmark(DOC, at(line(0.3)), 'The first sixty characters')).op).toBe('created');
+    const rows = await live(); // primary-key (random uuid) order
+    expect(rows.map((a) => a.kind).sort()).toEqual(['bookmark', 'highlight']);
+    expect(rows.find((a) => a.kind === 'bookmark')).toMatchObject({ label: 'The first sixty characters', colorId: null });
+    expect((await toggleBookmark(DOC, at(line(0.3)), 'ignored')).op).toBe('removed');
+    expect((await live()).map((a) => a.kind)).toEqual(['highlight']);
+    await undo(); // undoing the removal restores the same row
+    expect((await live()).map((a) => a.label).sort()).toEqual([null, 'The first sixty characters'].sort());
+  });
+
+  it('label edits are undoable', async () => {
+    await toggleBookmark(DOC, at(line(0.3)), 'old');
+    const id = (await live())[0]!.id;
+    await setLabel(id, 'old', 'new');
+    expect((await live())[0]!.label).toBe('new');
+    await undo();
+    expect((await live())[0]!.label).toBe('old');
   });
 });

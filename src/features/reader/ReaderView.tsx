@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
+import type { Anchor } from '../../core/anchors/types';
 import type { DocumentRow } from '../../core/db/models';
+import { annotationsRepo } from '../../core/db/repos';
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery';
 import { usePref } from '../../shared/hooks/usePref';
 import { en } from '../../shared/i18n/en';
 import { canHandleSingleKey, isPrimaryChord, isTypingTarget } from '../../shared/utils/keys';
+import { BookmarkIcon } from '../../shared/ui/icons';
 import { toast } from '../../shared/ui/toast';
 import { useSettings } from '../settings/useSettings';
 import { ThemeMenu } from '../theme/ThemeMenu';
 import { clearHistory, redo, undo } from './commands';
 import { FindBar } from './FindBar';
-import { applyColour, deleteOnSelection, LineActions } from './LineActions';
+import { applyColour, deleteOnSelection, LineActions, quickBookmark } from './LineActions';
+import { adjacentBookmark, jumpToAnchor, readingLine } from './navigation';
 import { Overlays } from './overlay/Overlays';
 import { ensureVisible, moveCursor, useLineTap, useNativeSelection } from './selection/useLineSelection';
 import { useReaderStore } from './store';
@@ -117,6 +121,27 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     };
   }, [pdf, row.contentHash]);
 
+  /** Quick bookmark (FR-BKM-01): the line cursor, else the reading line. */
+  const bookmarkHere = useCallback(async () => {
+    const v = viewerRef.current?.viewer;
+    const el = container.current;
+    const sel = useReaderStore.getState().selection;
+    await quickBookmark(row.id, sel ?? (v && el ? await readingLine(pdf, row.contentHash, v, el, getInset()) : null));
+  }, [pdf, row.id, row.contentHash, getInset]);
+
+  /** `[` / `]`: previous / next bookmark from the reading line (FR-BKM-03). */
+  const stepBookmark = useCallback(
+    async (dir: 1 | -1) => {
+      const v = viewerRef.current?.viewer;
+      const el = container.current;
+      if (!v || !el) return;
+      const next = adjacentBookmark(await annotationsRepo.ofKind(row.id, 'bookmark'), v, el, dir, getInset());
+      if (next) jumpToAnchor(v, el, next.anchor, getInset());
+      else toast(dir > 0 ? en.reader.noNextBookmark : en.reader.noPrevBookmark);
+    },
+    [row.id, getInset],
+  );
+
   // Keyboard (FR-RDR-02/03). Single keys respect the text-field/IME guard (FR-KEY-02).
   useEffect(() => {
     const v = viewerRef.current?.viewer;
@@ -163,6 +188,11 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
         void deleteOnSelection(row.id);
         return;
       }
+      if (e.key === 'b' || e.key === 'B' || e.key === '[' || e.key === ']') {
+        e.preventDefault();
+        void (e.key === '[' || e.key === ']' ? stepBookmark(e.key === ']' ? 1 : -1) : bookmarkHere());
+        return;
+      }
       const dir = { ArrowDown: 1, j: 1, J: 1, ArrowUp: -1, k: -1, K: -1 }[e.key] as 1 | -1 | undefined;
       if (sel?.kind === 'line' && dir) {
         // line cursor (FR-LIN-03); with no cursor, arrows keep scrolling natively
@@ -188,7 +218,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ready, setSidebar, pdf, row.contentHash, row.id, palette, active, setActive]);
+  }, [ready, setSidebar, pdf, row.contentHash, row.id, palette, active, setActive, bookmarkHere, stepBookmark]);
 
   // Ctrl/Cmd + wheel (and trackpad pinch) zooms around the pointer; PDF.js rounds scale to 0.01, so accumulate.
   useEffect(() => {
@@ -242,6 +272,11 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   };
   const goToFromSidebar = (n: number) => {
     jumpTo(n);
+    if (compact) setSidebar('closed');
+  };
+  const jumpFromSidebar = (anchor: Anchor) => {
+    const v = viewerRef.current?.viewer;
+    if (v && container.current) jumpToAnchor(v, container.current, anchor, getInset());
     if (compact) setSidebar('closed');
   };
   const openOutline = (item: OutlineItem) => {
@@ -376,7 +411,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
               aria-label={en.reader.sidebar}
               className="fixed inset-y-0 left-0 z-30 w-[min(20rem,85vw)] border-r border-line pt-[env(safe-area-inset-top)] md:static md:z-auto md:w-64 md:pt-0"
             >
-              <Sidebar pdf={pdf} current={page} onPage={goToFromSidebar} onOutline={openOutline} />
+              <Sidebar pdf={pdf} documentId={row.id} current={page} onPage={goToFromSidebar} onOutline={openOutline} onJump={jumpFromSidebar} />
             </aside>
           </>
         )}
@@ -392,7 +427,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
             documentId={row.id}
             docHash={row.contentHash}
             rotation={rotation}
-            toolbar={selection && <LineActions documentId={row.id} selection={selection} palette={palette} active={active} setActive={setActive} />}
+            toolbar={selection && <LineActions documentId={row.id} selection={selection} palette={palette} active={active} setActive={setActive} compact={compact} />}
           />
         </div>
       </div>
@@ -418,6 +453,9 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
             }}
             className="min-h-11 min-w-0 flex-1 accent-[var(--accent)]"
           />
+          <button className={btn} aria-label={en.reader.quickBookmark} onClick={() => void bookmarkHere()}>
+            <BookmarkIcon />
+          </button>
           {sidebarToggle}
           <ThemeMenu />
         </div>

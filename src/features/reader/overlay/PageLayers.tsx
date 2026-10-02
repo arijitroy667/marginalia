@@ -12,12 +12,13 @@ export interface PageOverlayProps {
   highlights: AnnotationRow[];
   hover?: NRect | undefined;
   selected?: NRect[] | undefined;
+  flash?: { rects: NRect[]; id: number } | undefined;
   markers?: { key: string; anchor: Anchor; node: React.ReactNode }[];
   banner?: string | undefined;
 }
 
 /** Highlights + hover/selection bands under the text layer; gutter markers above it (PRD §8.4, §10.4). */
-export function PageLayers({ hosts, rotation, highlights, hover, selected, markers = [], banner }: PageOverlayProps) {
+export function PageLayers({ hosts, rotation, highlights, hover, selected, flash, markers = [], banner }: PageOverlayProps) {
   return (
     <>
       {createPortal(
@@ -29,6 +30,7 @@ export function PageLayers({ hosts, rotation, highlights, hover, selected, marke
           )}
           {hover && <rect className="mg-hover" {...svgRect(hover, rotation)} />}
           {selected?.map((r, i) => <rect key={i} className="mg-selected" {...svgRect(r, rotation)} />)}
+          {flash?.rects.map((r, i) => <rect key={`${flash.id}:${i}`} className="mg-flash" {...svgRect(r, rotation)} />)}
         </svg>,
         hosts.under,
       )}
