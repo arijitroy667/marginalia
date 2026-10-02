@@ -12,10 +12,20 @@ export interface Platform {
   storageEstimate(): Promise<{ usage: number; quota: number } | null>;
   /** Human-readable name of this device ("Chrome on Windows", "iPhone"). */
   deviceLabel(): string;
+  /** Copy plain text to the clipboard; false if refused. */
+  copyText(text: string): Promise<boolean>;
 }
 
 export const platform: Platform = {
   deviceLabel: () => labelFromUserAgent(navigator.userAgent, navigator.maxTouchPoints),
+  async copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
+    }
+  },
   pickPdfFiles() {
     return new Promise((resolve) => {
       const input = Object.assign(document.createElement('input'), {

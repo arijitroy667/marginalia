@@ -33,7 +33,7 @@ test.describe('mobile reader (T-112, PRD §10.3, FR-RDR-03 pinch)', () => {
     await expect(bottomBar(page).getByRole('button', { name: 'Theme' })).toBeVisible();
   });
 
-  test('bars hide on scroll down, return on scroll up; a tap on the page toggles them', async ({ page }) => {
+  test('bars hide on scroll down, return on scroll up; a tap on blank space toggles them', async ({ page }) => {
     await open(page);
     const scroller = page.locator('.reader-scroll');
     await scroller.evaluate((el) => (el.scrollTop = 900));
@@ -42,10 +42,11 @@ test.describe('mobile reader (T-112, PRD §10.3, FR-RDR-03 pinch)', () => {
     await scroller.evaluate((el) => (el.scrollTop = 500));
     await expect.poll(() => onScreen(page, 'top')).toBe(true);
     await expect.poll(() => onScreen(page, 'bottom')).toBe(true);
+    // Appendix A: a tap on blank space (here the page's left margin) toggles the bars; a tap on text selects the line
     const box = (await scroller.boundingBox())!;
-    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await page.touchscreen.tap(box.x + 4, box.y + box.height / 2);
     await expect.poll(() => onScreen(page, 'top')).toBe(false);
-    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await page.touchscreen.tap(box.x + 4, box.y + box.height / 2);
     await expect.poll(() => onScreen(page, 'top')).toBe(true);
   });
 

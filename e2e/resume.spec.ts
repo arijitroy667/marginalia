@@ -62,9 +62,9 @@ test.describe('page-level resume (T-110, FR-BKM-04)', () => {
 
     const barOffScreen = await page.getByRole('toolbar', { name: 'Reader toolbar' }).evaluate((el) => el.getBoundingClientRect().bottom <= 1);
     if (barOffScreen) {
-      // phones: chrome auto-hid on scroll; a tap on the page brings it back (without scrolling)
+      // phones: chrome auto-hid on scroll; a tap on blank space (left margin) brings it back (without scrolling)
       const box = (await reader(page).boundingBox())!;
-      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await page.touchscreen.tap(box.x + 4, box.y + box.height / 2);
     }
     await page.getByRole('link', { name: 'Library' }).click();
     await expect(page.getByRole('link', { name: new RegExp(TITLE) })).toContainText(/5[89]% read/);

@@ -13,10 +13,11 @@ export interface PageOverlayProps {
   hover?: NRect | undefined;
   selected?: NRect[] | undefined;
   markers?: { key: string; anchor: Anchor; node: React.ReactNode }[];
+  banner?: string | undefined;
 }
 
 /** Highlights + hover/selection bands under the text layer; gutter markers above it (PRD §8.4, §10.4). */
-export function PageLayers({ hosts, rotation, highlights, hover, selected, markers = [] }: PageOverlayProps) {
+export function PageLayers({ hosts, rotation, highlights, hover, selected, markers = [], banner }: PageOverlayProps) {
   return (
     <>
       {createPortal(
@@ -31,6 +32,7 @@ export function PageLayers({ hosts, rotation, highlights, hover, selected, marke
         </svg>,
         hosts.under,
       )}
+      {banner && createPortal(<p className="mg-banner">{banner}</p>, hosts.over)}
       {markers.length > 0 &&
         createPortal(
           <div className="mg-gutter">

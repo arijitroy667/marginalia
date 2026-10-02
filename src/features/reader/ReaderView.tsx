@@ -6,11 +6,14 @@ import { usePref } from '../../shared/hooks/usePref';
 import { en } from '../../shared/i18n/en';
 import { canHandleSingleKey, isPrimaryChord } from '../../shared/utils/keys';
 import { toast } from '../../shared/ui/toast';
+import { platform } from '../../core/platform';
 import { ThemeMenu } from '../theme/ThemeMenu';
 import { FindBar } from './FindBar';
 import { Overlays } from './overlay/Overlays';
+import { ensureVisible, moveCursor, useLineTap, useNativeSelection } from './selection/useLineSelection';
+import { useReaderStore } from './store';
 import { usePinch } from './gestures/usePinch';
-import { classifyPointer, type PointerKind } from './gestures/tap';
+import type { PointerKind } from './gestures/tap';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
 import { createViewer, ZOOM_MAX, ZOOM_MIN, type PdfViewer, type Viewer } from './pdf/viewer';
 import type { OutlineItem } from './sidebar/Outline';
@@ -26,7 +29,6 @@ const rotate = (v: PdfViewer) => void (v.pagesRotation = (v.pagesRotation + 90) 
 
 const SIDEBAR = ['open', 'closed'] as const;
 const PRESET_VALUES = new Set(['page-width', 'page-fit', 'auto']);
-const INTERACTIVE = 'a, button, input, select, textarea, [role="button"], .annotationLayer a';
 
 function zoomStep(v: PdfViewer, dir: 1 | -1) {
   const cur = v.currentScale;
@@ -34,7 +36,7 @@ function zoomStep(v: PdfViewer, dir: 1 | -1) {
   if (next) v.currentScale = next;
 }
 
-/** Phones: hide bars on scroll down, show on scroll up / near the top; a tap on blank space toggles (§10.3). */
+/** Phones: hide bars on scroll down, show on scroll up / near the top (§10.3); blank taps toggle via useLineTap. */
 function useAutoHideChrome(enabled: boolean, container: RefObject<HTMLDivElement | null>, setChrome: (fn: (c: boolean) => boolean) => void) {
   useEffect(() => {
     const el = container.current;
@@ -47,32 +49,11 @@ function useAutoHideChrome(enabled: boolean, container: RefObject<HTMLDivElement
       setChrome(() => show);
       last = top;
     };
-    let down: { x: number; y: number; t: number; kind: PointerKind; max: number } | null = null;
-    const onDown = (e: PointerEvent) => {
-      down = e.isPrimary && !(e.target as Element).closest(INTERACTIVE) ? { x: e.clientX, y: e.clientY, t: e.timeStamp, kind: e.pointerType as PointerKind, max: 0 } : null;
-    };
-    const onMove = (e: PointerEvent) => {
-      if (down) down.max = Math.max(down.max, Math.hypot(e.clientX - down.x, e.clientY - down.y));
-    };
-    const onUp = (e: PointerEvent) => {
-      if (down && classifyPointer(down.kind, down, { x: e.clientX, y: e.clientY, t: e.timeStamp }, down.max, e.detail) === 'tap' && window.getSelection()?.isCollapsed !== false)
-        setChrome((c) => !c);
-      down = null;
-    };
-    const cancel = () => (down = null);
     const onClick = (e: MouseEvent) => (e.target as Element).closest('.annotationLayer a') && setChrome(() => false); // reading mode after a link jump
     el.addEventListener('click', onClick);
     el.addEventListener('scroll', onScroll, { passive: true });
-    el.addEventListener('pointerdown', onDown);
-    el.addEventListener('pointermove', onMove);
-    el.addEventListener('pointerup', onUp);
-    el.addEventListener('pointercancel', cancel);
     return () => {
       el.removeEventListener('scroll', onScroll);
-      el.removeEventListener('pointerdown', onDown);
-      el.removeEventListener('pointermove', onMove);
-      el.removeEventListener('pointerup', onUp);
-      el.removeEventListener('pointercancel', cancel);
       el.removeEventListener('click', onClick);
     };
   }, [enabled, container, setChrome]);
@@ -94,6 +75,9 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const [chrome, setChrome] = useState(true);
   const [rotation, setRotation] = useState(0);
   const compact = useMediaQuery('(max-width: 767px)');
+  const compactRef = useRef(compact);
+  const lastPointer = useRef<PointerKind>('mouse');
+  const selection = useReaderStore((s) => s.selection);
   const pages = pdf.numPages;
   const getViewer = useCallback(() => viewerRef.current, []); // stable: effects keyed on it must not re-run per render
   // reading slot = viewport top + chrome overlaying the page + 8 px (PRD §5); read from layout, so it stays stable
@@ -141,6 +125,24 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
         return;
       }
       if (!canHandleSingleKey(e)) return;
+      const sel = useReaderStore.getState().selection;
+      if (sel && e.key === 'Escape') {
+        useReaderStore.getState().select(null);
+        window.getSelection()?.removeAllRanges();
+        e.preventDefault();
+        return;
+      }
+      const dir = { ArrowDown: 1, j: 1, J: 1, ArrowUp: -1, k: -1, K: -1 }[e.key] as 1 | -1 | undefined;
+      if (sel?.kind === 'line' && dir) {
+        // line cursor (FR-LIN-03); with no cursor, arrows keep scrolling natively
+        e.preventDefault();
+        void moveCursor(pdf, row.contentHash, dir).then((next) => {
+          if (!next || !container.current) return;
+          useReaderStore.getState().select(next);
+          ensureVisible(v, container.current, next);
+        });
+        return;
+      }
       if (e.key === 'g' || e.key === 'G') {
         pageInput.current?.focus();
         pageInput.current?.select();
@@ -155,7 +157,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ready, setSidebar]);
+  }, [ready, setSidebar, pdf, row.contentHash]);
 
   // Ctrl/Cmd + wheel (and trackpad pinch) zooms around the pointer; PDF.js rounds scale to 0.01, so accumulate.
   useEffect(() => {
@@ -177,6 +179,13 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     return () => el.removeEventListener('wheel', onWheel);
   }, [ready]);
 
+  useEffect(() => {
+    compactRef.current = compact;
+  }, [compact]);
+  useEffect(() => () => useReaderStore.getState().select(null), []); // selection never outlives the reader
+  const onBlankTap = useCallback(() => compactRef.current && setChrome((c) => !c), []); // phones: tap blank toggles chrome
+  useLineTap(ready, getViewer, container, pdf, row.contentHash, onBlankTap, lastPointer);
+  useNativeSelection(ready, getViewer, container, pdf, row.contentHash, lastPointer);
   usePinch(ready, getViewer, container);
   useAutoHideChrome(compact && ready, container, setChrome);
   useResume({ pagesReady, getViewer, getInset, container, documentId: row.id });
@@ -343,7 +352,35 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
           <div ref={container} tabIndex={0} aria-label={row.title} className="reader-scroll outline-none">
             <div className="pdfViewer" />
           </div>
-          <Overlays ready={ready} getViewer={getViewer} container={container} pdf={pdf} documentId={row.id} docHash={row.contentHash} rotation={rotation} />
+          <Overlays
+            ready={ready}
+            getViewer={getViewer}
+            container={container}
+            pdf={pdf}
+            documentId={row.id}
+            docHash={row.contentHash}
+            rotation={rotation}
+            toolbar={
+              <>
+                <button
+                  onClick={() =>
+                    selection && void platform.copyText(selection.text).then((ok) => toast(ok ? en.reader.copied : en.reader.copyFailed))
+                  }
+                >
+                  {en.reader.copy}
+                </button>
+                <button
+                  aria-label={en.reader.clearSelection}
+                  onClick={() => {
+                    useReaderStore.getState().select(null);
+                    window.getSelection()?.removeAllRanges();
+                  }}
+                >
+                  ✕
+                </button>
+              </>
+            }
+          />
         </div>
       </div>
       {compact && (
@@ -362,7 +399,9 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
             max={pages}
             value={page}
             onChange={(e) => {
-              jumpTo(Number(e.target.value)); // scrubber (FR-RDR-02)
+              const n = Number(e.target.value);
+              setPage(n); // optimistic: fast key repeats must not step from a stale value before 'pagechanging'
+              jumpTo(n); // scrubber (FR-RDR-02)
             }}
             className="min-h-11 min-w-0 flex-1 accent-[var(--accent)]"
           />

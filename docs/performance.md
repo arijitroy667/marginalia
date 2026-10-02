@@ -1,6 +1,7 @@
 # Performance measurements
 
 Re-run: `python fixtures/generate.py --large` once, then `PERF=1 pnpm exec playwright test e2e/perf.spec.ts --workers 1`
+(`PERF=1` also tightens the library 500-document scroll gate in `e2e/library.spec.ts` from p95 < 50 ms to < 25 ms.)
 (production build, Chromium; numbers below from a desktop dev machine, 2026-10-02). Real-device runs are part
 of `docs/qa-checklist.md`.
 
