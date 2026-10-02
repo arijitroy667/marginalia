@@ -687,6 +687,27 @@ def f15_geometry():
     print("  15-geometry-calibration.pdf: 4 pages x 4 boxes")
 
 
+def f16_outline_links():
+    """Outline (nested TOC), an internal link (p1 -> p4) and an external link: FR-RDR-05/08 (T-108/T-109)."""
+    if not fresh("16-outline-links.pdf"):
+        return
+    f = Fixture("16-outline-links.pdf", "single", "nested outline, internal + external links")
+    c = Corpus(16)
+    for pno in range(5):
+        p = f.page(595, 842)
+        f.line(p, 72, 90, f"Chapter {pno + 1}".split(), "hebo", 18)
+        f.flow(p, 72, 130, c.paragraph(4, 5), "tiro", 11, 451, 14, indent=14)
+        if pno == 0:
+            f.line(p, 72, 420, "Jump to chapter four".split(), "helv", 12, color=(0.1, 0.3, 0.8))
+            f.line(p, 72, 450, "Visit example.com".split(), "helv", 12, color=(0.1, 0.3, 0.8))
+    first = f.doc[0]  # links need their target pages to exist
+    first.insert_link({"kind": fitz.LINK_GOTO, "from": fitz.Rect(72, 408, 200, 424), "page": 3, "to": fitz.Point(72, 70)})
+    first.insert_link({"kind": fitz.LINK_URI, "from": fitz.Rect(72, 438, 180, 454), "uri": "https://example.com/"})
+    f.doc.set_toc([[1, "Chapter 1", 1], [1, "Chapter 2", 2], [2, "Section 2.1", 2], [1, "Chapter 3", 3],
+                   [1, "Chapter 4", 4], [1, "Chapter 5", 5]])
+    f.save()
+
+
 def f13_password():
     if not fresh("13-password.pdf"):
         return
@@ -726,5 +747,6 @@ if __name__ == "__main__":
     f13_password()
     f14_corrupt()
     f15_geometry()
+    f16_outline_links()
     if "--large" in sys.argv:
         f12_large()

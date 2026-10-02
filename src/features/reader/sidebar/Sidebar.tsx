@@ -1,0 +1,48 @@
+import { Tabs } from 'radix-ui';
+import { useEffect, useState } from 'react';
+import { en } from '../../../shared/i18n/en';
+import type { PDFDocumentProxy } from '../pdf/pdfjs';
+import { Outline, type OutlineItem } from './Outline';
+import { revokeThumbnails, Thumbnails } from './Thumbnails';
+
+const tab = 'min-h-11 flex-1 border-b-2 border-transparent px-3 text-sm text-muted data-[state=active]:border-accent data-[state=active]:font-medium data-[state=active]:text-ui-fg';
+
+/** Pages (thumbnails) and Contents (outline) tabs; annotation tabs join in T-208. */
+export function Sidebar({ pdf, current, onPage, onOutline }: { pdf: PDFDocumentProxy; current: number; onPage: (n: number) => void; onOutline: (item: OutlineItem) => void }) {
+  const [outline, setOutline] = useState<OutlineItem[]>([]);
+  const [aspect, setAspect] = useState(1.3);
+
+  useEffect(() => {
+    let alive = true;
+    void pdf.getOutline().then((o) => alive && setOutline(o ?? []));
+    void pdf.getPage(1).then((p) => {
+      const v = p.getViewport({ scale: 1 });
+      if (alive) setAspect(v.height / v.width);
+    });
+    return () => {
+      alive = false;
+      revokeThumbnails(pdf);
+    };
+  }, [pdf]);
+
+  return (
+    <Tabs.Root defaultValue="pages" className="flex h-full flex-col bg-surface">
+      <Tabs.List aria-label={en.reader.sidebar} className="flex border-b border-line">
+        <Tabs.Trigger value="pages" className={tab}>
+          {en.reader.pages}
+        </Tabs.Trigger>
+        {outline.length > 0 && ( // hidden if the PDF has no outline (FR-RDR-05)
+          <Tabs.Trigger value="contents" className={tab}>
+            {en.reader.contents}
+          </Tabs.Trigger>
+        )}
+      </Tabs.List>
+      <Tabs.Content value="pages" className="min-h-0 flex-1 overflow-auto outline-none">
+        <Thumbnails pdf={pdf} current={current} aspect={aspect} onSelect={onPage} />
+      </Tabs.Content>
+      <Tabs.Content value="contents" className="min-h-0 flex-1 overflow-auto p-2 outline-none">
+        <Outline items={outline} onNavigate={onOutline} />
+      </Tabs.Content>
+    </Tabs.Root>
+  );
+}

@@ -1,0 +1,347 @@
+{
+ "fixture": "16-outline-links.pdf",
+ "layout": "single",
+ "note": "nested outline, internal + external links",
+ "pages": [
+  {
+   "page": 1,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Chapter 1",
+     "rect": [
+      0.12101,
+      0.08979,
+      0.13952,
+      0.02138
+     ],
+     "score": true
+    },
+    {
+     "text": "Very of do only transformation him letter only may, responsibility for window man made make.",
+     "rect": [
+      0.14454,
+      0.14394,
+      0.73445,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "Even here concentration to another concentration she, his is some down particularly too never are.",
+     "rect": [
+      0.12101,
+      0.16057,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "Time and these an any as life as international, then last can they here too would own how? Last used",
+     "rect": [
+      0.12101,
+      0.1772,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "development after consideration by since, well people, international to. Against only go any us being",
+     "rect": [
+      0.12101,
+      0.19382,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where between no is.",
+     "rect": [
+      0.12101,
+      0.21045,
+      0.15607,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "Jump to chapter four",
+     "rect": [
+      0.12101,
+      0.48741,
+      0.18496,
+      0.01425
+     ],
+     "score": true
+    },
+    {
+     "text": "Visit example.com",
+     "rect": [
+      0.12101,
+      0.52304,
+      0.16362,
+      0.01425
+     ],
+     "score": true
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Chapter 2",
+     "rect": [
+      0.12101,
+      0.08979,
+      0.13952,
+      0.02138
+     ],
+     "score": true
+    },
+    {
+     "text": "Her new line so both particularly when who very, characteristic little she river men in his just.",
+     "rect": [
+      0.14454,
+      0.14394,
+      0.73445,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "Nevertheless long as the up man evening that recommendation the after his even river? Do reading is",
+     "rect": [
+      0.12101,
+      0.16057,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "must too get, can to, of, from when other state they any and, if quiet them. Her river could most so",
+     "rect": [
+      0.12101,
+      0.1772,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "much been international good first over through many, how two against where circumstances?",
+     "rect": [
+      0.12101,
+      0.19382,
+      0.69777,
+      0.01306
+     ],
+     "score": true
+    }
+   ]
+  },
+  {
+   "page": 3,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Chapter 3",
+     "rect": [
+      0.12101,
+      0.08979,
+      0.13952,
+      0.02138
+     ],
+     "score": true
+    },
+    {
+     "text": "Must good state into own, of garden their development about too between, acknowledgement after,",
+     "rect": [
+      0.14454,
+      0.14394,
+      0.73445,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "two off then where. Most letter what garden which still three there who river two world it. At have",
+     "rect": [
+      0.12101,
+      0.16057,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "been those most will where how evening could state, years make your these margin see? Used so but",
+     "rect": [
+      0.12101,
+      0.1772,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "through us window international my could. After at through two extraordinary off, should at back",
+     "rect": [
+      0.12101,
+      0.19382,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "know but come.",
+     "rect": [
+      0.12101,
+      0.21045,
+      0.11862,
+      0.01306
+     ],
+     "score": true
+    }
+   ]
+  },
+  {
+   "page": 4,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Chapter 4",
+     "rect": [
+      0.12101,
+      0.08979,
+      0.13952,
+      0.02138
+     ],
+     "score": true
+    },
+    {
+     "text": "We each the river like long while even must quiet life since very he is same, another each?",
+     "rect": [
+      0.14454,
+      0.14394,
+      0.73445,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "Another its very those his up reading organization not, on last what. Now were which see when was,",
+     "rect": [
+      0.12101,
+      0.16057,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "line understanding have people they old and? Were can nevertheless he line of my characteristic",
+     "rect": [
+      0.12101,
+      0.1772,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "understanding off international? Between of come long do three because they make old more",
+     "rect": [
+      0.12101,
+      0.19382,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "characteristic never not most note years by only the.",
+     "rect": [
+      0.12101,
+      0.21045,
+      0.38559,
+      0.01306
+     ],
+     "score": true
+    }
+   ]
+  },
+  {
+   "page": 5,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Chapter 5",
+     "rect": [
+      0.12101,
+      0.08979,
+      0.13952,
+      0.02138
+     ],
+     "score": true
+    },
+    {
+     "text": "Not day through and this life with margin than after only organization is old my its. Up she make",
+     "rect": [
+      0.14454,
+      0.14394,
+      0.73445,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "before back should after out are long. Between were time most we particularly even see margin your",
+     "rect": [
+      0.12101,
+      0.16057,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "most did make right first many work world many. Both from any being last between make",
+     "rect": [
+      0.12101,
+      0.1772,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "recommendation life where get line.",
+     "rect": [
+      0.12101,
+      0.19382,
+      0.26749,
+      0.01306
+     ],
+     "score": true
+    }
+   ]
+  }
+ ]
+}

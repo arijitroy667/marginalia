@@ -19,3 +19,16 @@
 .reader-scroll .pdfViewer {
   padding-bottom: 2rem;
 }
+
+/* Search hits: outline, not fill, so they never look like user highlights (PRD §10.4, FR-RDR-06). */
+/* PDF.js declares these variables on .highlight itself, so override them there */
+.reader-scroll .textLayer .highlight {
+  --highlight-bg-color: transparent;
+  --highlight-selected-bg-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+.reader-scroll .textLayer .highlight.selected {
+  outline-width: 3px;
+}

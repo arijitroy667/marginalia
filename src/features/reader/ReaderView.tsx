@@ -1,12 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import type { DocumentRow } from '../../core/db/models';
 import { en } from '../../shared/i18n/en';
+import { usePref } from '../../shared/hooks/usePref';
 import { canHandleSingleKey, isPrimaryChord } from '../../shared/utils/keys';
 import { toast } from '../../shared/ui/toast';
 import { ThemeMenu } from '../theme/ThemeMenu';
+import { FindBar } from './FindBar';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
 import { createViewer, ZOOM_MAX, ZOOM_MIN, type Viewer } from './pdf/viewer';
+import type { OutlineItem } from './sidebar/Outline';
+import { Sidebar } from './sidebar/Sidebar';
 
 const PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 const clamp = (s: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s));
@@ -15,6 +19,9 @@ type PdfViewer = Viewer['viewer'];
 // PDF.js viewer is external mutable state: writes go through these helpers, not component scope
 const goToPage = (v: PdfViewer, n: number) => void (v.currentPageNumber = n);
 const setZoom = (v: PdfViewer, value: string) => void (v.currentScaleValue = value);
+
+const SIDEBAR = ['open', 'closed'] as const;
+const PRESET_VALUES = new Set(['page-width', 'page-fit', 'auto']);
 
 function zoomStep(v: PdfViewer, dir: 1 | -1) {
   const cur = v.currentScale;
@@ -31,7 +38,11 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const [page, setPage] = useState(1);
   const [scale, setScale] = useState<{ value: number; preset?: string }>({ value: 1, preset: 'page-width' });
   const [draft, setDraft] = useState<string | null>(null);
+  const [sidebar, setSidebar] = usePref('reader.sidebar', SIDEBAR, window.innerWidth >= 1024 ? 'open' : 'closed');
+  const [finding, setFinding] = useState(false);
   const pages = pdf.numPages;
+  const narrow = () => !window.matchMedia('(min-width: 768px)').matches;
+  const getViewer = useCallback(() => viewerRef.current, []); // stable: FindBar's effect must not re-run per render
 
   useEffect(() => {
     let created: Viewer | undefined;
@@ -64,6 +75,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
         if (e.key === '=' || e.key === '+') zoomStep(v, 1);
         else if (e.key === '-') zoomStep(v, -1);
         else if (e.key === '0') v.currentScaleValue = 'page-width';
+        else if (e.key === 'f' || e.key === 'F') setFinding(true); // our search, not the browser's (FR-RDR-06)
         else return;
         e.preventDefault(); // instead of browser page zoom
         return;
@@ -76,12 +88,14 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
       else if (e.key === 'End') v.currentPageNumber = v.pagesCount;
       else if (e.key === 'PageDown') v.nextPage();
       else if (e.key === 'PageUp') v.previousPage();
+      else if (e.key === 's' || e.key === 'S') setSidebar((s) => (s === 'open' ? 'closed' : 'open'));
+      else if (e.key === '/') setFinding(true);
       else return;
       e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ready]);
+  }, [ready, setSidebar]);
 
   // Ctrl/Cmd + wheel (and trackpad pinch) zooms around the pointer; PDF.js rounds scale to 0.01, so accumulate.
   useEffect(() => {
@@ -103,6 +117,29 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     return () => el.removeEventListener('wheel', onWheel);
   }, [ready]);
 
+  // PDFViewer does not watch its container: re-fit fit-width/fit-page when the viewer area resizes
+  useEffect(() => {
+    const el = container.current;
+    if (!ready || !el) return;
+    const ro = new ResizeObserver(() => {
+      const v = viewerRef.current?.viewer;
+      if (v && PRESET_VALUES.has(v.currentScaleValue)) setZoom(v, v.currentScaleValue);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ready]);
+
+  const goToFromSidebar = (n: number) => {
+    const v = viewerRef.current?.viewer;
+    if (v) goToPage(v, n);
+    if (narrow()) setSidebar('closed');
+  };
+  const openOutline = (item: OutlineItem) => {
+    if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
+    else if (item.dest) void viewerRef.current?.linkService.goToDestination(item.dest);
+    if (narrow()) setSidebar('closed');
+  };
+
   const commitPage = () => {
     const v = viewerRef.current?.viewer;
     if (draft === null || !v) return;
@@ -123,6 +160,15 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
         aria-label={en.reader.toolbar}
         className="flex items-center gap-1 border-b border-line bg-surface px-2 pt-[env(safe-area-inset-top)] text-sm"
       >
+        <button
+          className={btn}
+          aria-label={en.reader.toggleSidebar}
+          aria-expanded={sidebar === 'open'}
+          aria-controls="reader-sidebar"
+          onClick={() => setSidebar((s) => (s === 'open' ? 'closed' : 'open'))}
+        >
+          ☰
+        </button>
         <Link to="/" className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-ui-fg hover:bg-ui-bg">
           <span aria-hidden="true">←</span>
           <span className="hidden sm:inline">{en.reader.back}</span>
@@ -183,11 +229,30 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
             +
           </button>
         </div>
+        <button className={btn} aria-label={en.reader.find} aria-expanded={finding} onClick={() => setFinding((f) => !f)}>
+          ⌕
+        </button>
         <ThemeMenu />
       </header>
-      <div className="relative min-h-0 flex-1">
-        <div ref={container} tabIndex={0} aria-label={row.title} className="reader-scroll outline-none">
-          <div className="pdfViewer" />
+      {finding && ready && <FindBar getViewer={getViewer} onClose={() => setFinding(false)} />}
+      <div className="relative flex min-h-0 flex-1">
+        {sidebar === 'open' && (
+          <>
+            {/* phones: drawer over the page with a backdrop; md+: docked column */}
+            <button aria-label={en.common.close} className="fixed inset-0 z-20 bg-black/40 md:hidden" onClick={() => setSidebar('closed')} />
+            <aside
+              id="reader-sidebar"
+              aria-label={en.reader.sidebar}
+              className="fixed inset-y-0 left-0 z-30 w-[min(20rem,85vw)] border-r border-line pt-[env(safe-area-inset-top)] md:static md:z-auto md:w-64 md:pt-0"
+            >
+              <Sidebar pdf={pdf} current={page} onPage={goToFromSidebar} onOutline={openOutline} />
+            </aside>
+          </>
+        )}
+        <div className="relative min-w-0 flex-1">
+          <div ref={container} tabIndex={0} aria-label={row.title} className="reader-scroll outline-none">
+            <div className="pdfViewer" />
+          </div>
         </div>
       </div>
     </div>
