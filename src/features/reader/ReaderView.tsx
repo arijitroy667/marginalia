@@ -8,13 +8,13 @@ import { toast } from '../../shared/ui/toast';
 import { ThemeMenu } from '../theme/ThemeMenu';
 import { FindBar } from './FindBar';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
-import { createViewer, ZOOM_MAX, ZOOM_MIN, type Viewer } from './pdf/viewer';
+import { createViewer, ZOOM_MAX, ZOOM_MIN, type PdfViewer, type Viewer } from './pdf/viewer';
 import type { OutlineItem } from './sidebar/Outline';
 import { Sidebar } from './sidebar/Sidebar';
+import { useResume } from './useResume';
 
 const PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 const clamp = (s: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s));
-type PdfViewer = Viewer['viewer'];
 
 // PDF.js viewer is external mutable state: writes go through these helpers, not component scope
 const goToPage = (v: PdfViewer, n: number) => void (v.currentPageNumber = n);
@@ -36,6 +36,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const pageInput = useRef<HTMLInputElement>(null);
   const viewerRef = useRef<Viewer | null>(null); // PDF.js objects are external and mutable: a ref, not state
   const [ready, setReady] = useState(false);
+  const [pagesReady, setPagesReady] = useState(false); // page boxes laid out at the initial scale
   const [page, setPage] = useState(1);
   const [scale, setScale] = useState<{ value: number; preset?: string }>({ value: 1, preset: 'page-width' });
   const [draft, setDraft] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
       v.eventBus.on('pagesinit', () => {
         v.viewer.currentScaleValue = 'page-width'; // default (FR-RDR-03); zoom is device-local, never synced
         container.current?.focus({ preventScroll: true }); // arrows/space scroll right away
+        setPagesReady(true);
       });
       v.eventBus.on('pagechanging', (e: { pageNumber: number }) => setPage(e.pageNumber));
       v.eventBus.on('scalechanging', (e: { scale: number; presetValue?: string }) => setScale({ value: e.scale, preset: e.presetValue }));
@@ -117,6 +119,8 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, [ready]);
+
+  useResume({ pagesReady, getViewer, container, documentId: row.id });
 
   // PDFViewer does not watch its container: re-fit fit-width/fit-page when the viewer area resizes
   useEffect(() => {

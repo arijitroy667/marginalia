@@ -1,3 +1,5 @@
+import { labelFromUserAgent } from '../../shared/utils/device';
+
 /**
  * Non-portable APIs behind one seam (CLAUDE.md rule 4). A Capacitor build swaps this module's
  * implementation (native file picker, Filesystem, share sheet) without touching features.
@@ -8,9 +10,12 @@ export interface Platform {
   /** Ask the browser not to evict our storage (FR-SYN-07, H7). */
   persistStorage(): Promise<boolean>;
   storageEstimate(): Promise<{ usage: number; quota: number } | null>;
+  /** Human-readable name of this device ("Chrome on Windows", "iPhone"). */
+  deviceLabel(): string;
 }
 
 export const platform: Platform = {
+  deviceLabel: () => labelFromUserAgent(navigator.userAgent, navigator.maxTouchPoints),
   pickPdfFiles() {
     return new Promise((resolve) => {
       const input = Object.assign(document.createElement('input'), {

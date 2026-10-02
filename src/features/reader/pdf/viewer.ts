@@ -2,12 +2,17 @@
  * PDF.js PDFViewer wiring (PRD §8.4): virtualised continuous scroll, text layer, link layer, find
  * controller. Public API only (rule 9). Canvas caps per ADR 0003.
  */
+import type { PDFPageView } from 'pdfjs-dist/web/pdf_viewer.mjs';
 import { pdfjs, type PDFDocumentProxy } from './pdfjs';
 
 export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 4;
 
 export type Viewer = Awaited<ReturnType<typeof createViewer>>;
+export type PdfViewer = Viewer['viewer'];
+
+/** PDF.js types getPageView() as any; this is the one typed accessor (0-based index). */
+export const pageViewAt = (v: PdfViewer, index: number): PDFPageView | undefined => v.getPageView(index) as PDFPageView | undefined;
 
 /** `fingerprint` keys browser-history entries to this document: our SHA-256, not PDF.js's weak one (FR-LIB-02). */
 export async function createViewer(container: HTMLDivElement, doc: PDFDocumentProxy, fingerprint: string) {

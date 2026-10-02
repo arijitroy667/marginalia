@@ -181,3 +181,16 @@ export const metaRepo = {
     await db.meta.put({ key, value });
   },
 };
+
+let deviceIdPromise: Promise<string> | undefined;
+/** Random id persisted per browser profile (reading_positions.device_id). Memoised so racing callers share it. */
+export function deviceId(): Promise<string> {
+  deviceIdPromise ??= db.transaction('rw', db.meta, async () => {
+    const existing = await metaRepo.get<string>('deviceId');
+    if (existing) return existing;
+    const id = crypto.randomUUID();
+    await metaRepo.set('deviceId', id);
+    return id;
+  });
+  return deviceIdPromise;
+}
