@@ -38,6 +38,7 @@ export default tseslint.config(
   {
     // pure TypeScript core (CLAUDE.md rule 1); tsconfig.core.json also removes DOM types
     files: ['src/core/line-engine/**', 'src/core/anchors/**'],
+    ignores: ['**/*.test.ts'], // tests may cross-check against schemas
     rules: {
       'no-restricted-imports': [
         'error',
@@ -46,7 +47,7 @@ export default tseslint.config(
           patterns: [
             { group: ['react', 'react-*', 'react/*'], message: 'core is pure TS (rule 1)' },
             { group: ['pdfjs-dist', 'pdfjs-dist/*', 'dexie', 'dexie-*'], message: 'core is pure TS (rule 1)' },
-            { group: ['**/features/**', '**/app/**', '**/core/db/**', '**/core/sync/**'], message: 'core is pure TS (rule 1)' },
+            { group: ['**/features/**', '**/app/**', '**/db/**', '**/db', '**/sync/**', '**/supabase/**', '**/platform/**'], message: 'core is pure TS (rule 1)' },
           ],
         },
       ],
