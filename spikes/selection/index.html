@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>S4 tap/drag + selection harness</title>
+<link rel="stylesheet" href="/node_modules/pdfjs-dist/web/pdf_viewer.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: #555; }
+  #container { position: absolute; inset: 0; overflow: auto; touch-action: pan-x pan-y; }
+</style>
+</head>
+<body>
+<div id="container"><div class="pdfViewer"></div></div>
+<script type="module">
+  import * as pdfjsLib from '/node_modules/pdfjs-dist/build/pdf.mjs';
+  globalThis.pdfjsLib = pdfjsLib;
+  const { PDFViewer, EventBus, PDFLinkService } = await import('/node_modules/pdfjs-dist/web/pdf_viewer.mjs');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/node_modules/pdfjs-dist/build/pdf.worker.mjs';
+
+  // spike copies of gesture.ts / geometry (see spikes/selection/gesture.ts, ADR 0003)
+  const SLOP = { mouse: 4, pen: 4, touch: 10 };
+  const classify = (kind, d, u, maxTravel) => (Math.max(maxTravel, Math.hypot(u.x - d.x, u.y - d.y)) < SLOP[kind] && u.t - d.t < 300 ? 'tap' : 'native');
+  const fromCanonical = (r, rot) => rot === 90 ? { x: 1 - r.y - r.h, y: r.x, w: r.h, h: r.w } : rot === 180 ? { x: 1 - r.x - r.w, y: 1 - r.y - r.h, w: r.w, h: r.h } : rot === 270 ? { x: r.y, y: 1 - r.x - r.w, w: r.h, h: r.w } : { ...r };
+  const toCanonical = (r, rot) => fromCanonical(r, (360 - rot) % 360);
+  function groupLineRects(rects) {
+    const lines = [];
+    for (const r of rects.filter((r) => r.w > 0 && r.h > 0)) {
+      const ov = (l) => (Math.min(l.y + l.h, r.y + r.h) - Math.max(l.y, r.y)) / Math.min(l.h, r.h);
+      const l = lines.find((l) => ov(l) >= 0.5);
+      if (!l) { lines.push({ ...r }); continue; }
+      const x0 = Math.min(l.x, r.x), y0 = Math.min(l.y, r.y);
+      Object.assign(l, { w: Math.max(l.x + l.w, r.x + r.w) - x0, h: Math.max(l.y + l.h, r.y + r.h) - y0, x: x0, y: y0 });
+    }
+    return lines;
+  }
+
+  const container = document.getElementById('container');
+  let viewer, eventBus;
+  window.log = [];
+
+  let down = null;
+  container.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: e.timeStamp, kind: e.pointerType, max: 0 }; });
+  container.addEventListener('pointermove', (e) => { if (down) down.max = Math.max(down.max, Math.hypot(e.clientX - down.x, e.clientY - down.y)); });
+  const finish = (e) => {
+    if (!down) return;
+    let kind = classify(down.kind, down, { x: e.clientX, y: e.clientY, t: e.timeStamp }, down.max);
+    if (kind === 'tap' && e.detail >= 2) kind = 'native'; // double/triple click: native word/line selection
+    if (kind === 'tap') window.getSelection().removeAllRanges(); // stray 1-2 char selection from click jitter
+    window.log.push({ kind, pointer: down.kind, travel: +down.max.toFixed(1), ms: Math.round(e.timeStamp - down.t) });
+    down = null;
+  };
+  container.addEventListener('pointerup', finish);
+  container.addEventListener('pointercancel', (e) => { if (down) window.log.push({ kind: 'cancel', pointer: down.kind, travel: +down.max.toFixed(1) }); down = null; }); // browser took over (scroll / native selection)
+
+  window.api = {
+    async load(file) {
+      const doc = await pdfjsLib.getDocument({ url: file, isEvalSupported: false, standardFontDataUrl: '/node_modules/pdfjs-dist/standard_fonts/' }).promise;
+      eventBus = new EventBus();
+      const linkService = new PDFLinkService({ eventBus });
+      viewer = new PDFViewer({ container, eventBus, linkService });
+      linkService.setViewer(viewer);
+      const done = new Promise((r) => eventBus.on('textlayerrendered', (e) => e.pageNumber === 1 && r()));
+      viewer.setDocument(doc);
+      linkService.setDocument(doc);
+      await done;
+    },
+    async rotate(deg) {
+      const done = new Promise((r) => { const on = (e) => { if (e.pageNumber === 1) { eventBus.off('textlayerrendered', on); r(); } }; eventBus.on('textlayerrendered', on); });
+      viewer.pagesRotation = deg;
+      await Promise.race([done, new Promise((r) => setTimeout(r, 3000))]);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    },
+    /** screen centre of the k-th text span on page 1 (span text included) */
+    span(k) {
+      const s = [...viewer.getPageView(0).div.querySelectorAll('.textLayer span[role="presentation"]')].filter((s) => s.textContent.trim().length > 3)[k];
+      s.scrollIntoView({ block: 'center', inline: 'center' });
+      const r = s.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, left: r.left + 2, right: r.right - 2, text: s.textContent };
+    },
+    /** one target per distinct line, grouped in canonical space (works under rotation) */
+    lineStarts() {
+      const pv = viewer.getPageView(0), rot = viewer.pagesRotation;
+      const box = pv.div.querySelector('.canvasWrapper').getBoundingClientRect();
+      const toScreen = (cx, cy) => { const d = fromCanonical({ x: cx, y: cy, w: 0, h: 0 }, rot); return { x: box.left + d.x * box.width, y: box.top + d.y * box.height }; };
+      const rows = [];
+      for (const s of pv.div.querySelectorAll('.textLayer span[role="presentation"]')) {
+        if (s.textContent.trim().length < 3) continue;
+        const r = s.getBoundingClientRect();
+        const c = toCanonical({ x: (r.left - box.left) / box.width, y: (r.top - box.top) / box.height, w: r.width / box.width, h: r.height / box.height }, rot);
+        const row = rows.find((q) => Math.abs(q.cy - (c.y + c.h / 2)) < c.h / 2);
+        if (row) { row.x0 = Math.min(row.x0, c.x); row.x1 = Math.max(row.x1, c.x + c.w); }
+        else rows.push({ cy: c.y + c.h / 2, x0: c.x, x1: c.x + c.w });
+      }
+      rows.sort((a, b) => a.cy - b.cy);
+      return rows.map((q) => ({ start: toScreen(q.x0 + 0.004, q.cy), mid: toScreen((q.x0 + q.x1) / 2, q.cy) }));
+    },
+    /** current selection -> canonical per-line rects + round-trip error vs the text-layer client rects */
+    selection() {
+      const sel = window.getSelection();
+      if (sel.isCollapsed) return null;
+      const pv = viewer.getPageView(0), rot = viewer.pagesRotation;
+      const box = pv.div.querySelector('.canvasWrapper').getBoundingClientRect();
+      const client = [...sel.getRangeAt(0).getClientRects()].filter((r) => r.width > 0.5 && r.height > 0.5 && r.width < box.width * 0.99);
+      const canon = client.map((r) => toCanonical({ x: (r.left - box.left) / box.width, y: (r.top - box.top) / box.height, w: r.width / box.width, h: r.height / box.height }, rot));
+      let err = 0;
+      canon.forEach((c, i) => {
+        const d = fromCanonical(c, rot), r = client[i];
+        err = Math.max(err, Math.abs(box.left + d.x * box.width - r.left), Math.abs(box.top + d.y * box.height - r.top), Math.abs(box.left + (d.x + d.w) * box.width - r.right), Math.abs(box.top + (d.y + d.h) * box.height - r.bottom));
+      });
+      return { text: sel.toString(), lines: groupLineRects(canon), roundTripErrPx: err };
+    },
+    clear() { window.getSelection().removeAllRanges(); window.log = []; },
+  };
+  window.ready = true;
+</script>
+</body>
+</html>
