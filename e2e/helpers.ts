@@ -42,3 +42,45 @@ export async function addViaPicker(page: Page, ...names: string[]) {
  * Safari on macOS/iOS and WebKit on Linux CI. Tests that store a PDF skip only in that combination.
  */
 export const noIdbBlobs = (browserName: string) => browserName === 'webkit' && process.platform === 'win32';
+
+/** Seed rows straight into the app DB (Dexie creates the schema on first visit), then reload. */
+export async function seed(page: Page, stores: Record<string, unknown[]>) {
+  await page.goto('/');
+  await page.waitForFunction(() => document.querySelector('h1') !== null);
+  await page.evaluate(
+    (stores) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('marginalia');
+        open.onsuccess = () => {
+          const tx = open.result.transaction(Object.keys(stores), 'readwrite');
+          for (const [name, rows] of Object.entries(stores)) for (const r of rows) tx.objectStore(name).put(r);
+          tx.oncomplete = () => (open.result.close(), resolve());
+          tx.onerror = () => reject(new Error(String(tx.error)));
+        };
+      }),
+    stores,
+  );
+  await page.reload();
+}
+
+/** A valid local document row (see src/core/db/models.ts). */
+export function docRow(i: number, over: Record<string, unknown> = {}) {
+  const iso = (d: number) => new Date(Date.UTC(2026, 8, 1) + d * 3_600_000).toISOString();
+  return {
+    id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+    contentHash: i.toString(16).padStart(64, '0'),
+    title: `Document ${i}`,
+    author: null,
+    pageCount: 10,
+    fileSize: 1000,
+    storageMode: 'cloud',
+    storagePath: null,
+    coverPath: null,
+    lastOpenedAt: null,
+    createdAt: iso(i),
+    updatedAt: iso(i),
+    deletedAt: null,
+    localUpdatedAt: 0,
+    ...over,
+  };
+}
