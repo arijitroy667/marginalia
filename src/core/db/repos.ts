@@ -107,7 +107,13 @@ export const annotationsRepo = {
     return annotationsRepo.update(id, { deletedAt: null });
   },
 
-  /** Live annotations of one kind in a document (bookmark list, `[` `]`). */
+  /** Live annotations of a document (overlays, annotation panel). */
+  async ofDocument(documentId: string): Promise<AnnotationRow[]> {
+    const rows = await db.annotations.where('documentId').equals(documentId).toArray();
+    return rows.filter((a) => a.deletedAt === null);
+  },
+
+  /** Live annotations of one kind in a document (`[` `]`). */
   async ofKind(documentId: string, kind: AnnotationRow['kind']): Promise<AnnotationRow[]> {
     const rows = await db.annotations.where('[documentId+kind]').equals([documentId, kind]).toArray();
     return rows.filter((a) => a.deletedAt === null);

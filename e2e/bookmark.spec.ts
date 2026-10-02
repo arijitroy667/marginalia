@@ -9,14 +9,18 @@ interface Row {
   deletedAt: string | null;
   anchor: { rects: { x: number; y: number; w: number; h: number }[] };
 }
-const bookmarks = async (page: Page) => (await idb<Row>(page, 'annotations')).filter((a) => a.kind === 'bookmark' && a.deletedAt === null);
+const bookmarks = async (page: Page) =>
+  (await idb<Row>(page, 'annotations')).filter((a) => a.kind === 'bookmark' && a.deletedAt === null);
 const ribbons = (page: Page, n = 1) => page.locator(`.page[data-page-number="${n}"] .mg-ribbon`);
 const toolbar = (page: Page) => page.getByRole('toolbar', { name: 'Line actions' });
 
 test.describe('bookmarks (T-205, FR-BKM-01..03)', () => {
   test.beforeEach(({ browserName }) => test.skip(noIdbBlobs(browserName), 'WinCairo WebKit: no IndexedDB Blobs'));
 
-  test('B bookmarks the selected line, labelled with its first 60 chars; B again removes it, with Undo', async ({ page, isMobile }) => {
+  test('B bookmarks the selected line, labelled with its first 60 chars; B again removes it, with Undo', async ({
+    page,
+    isMobile,
+  }) => {
     test.skip(isMobile, 'keyboard');
     await openDoc(page, '01-single-column-prose.pdf');
     const [r] = await textRows(page, 1, 8);
@@ -51,7 +55,10 @@ test.describe('bookmarks (T-205, FR-BKM-01..03)', () => {
     expect(b!.label).toBeTruthy();
   });
 
-  test('the sidebar lists bookmarks; a click jumps and flashes the line; [ and ] step between them', async ({ page, isMobile }) => {
+  test('the sidebar lists bookmarks; a click jumps and flashes the line; [ and ] step between them', async ({
+    page,
+    isMobile,
+  }) => {
     test.skip(isMobile, 'keyboard');
     await openDoc(page, '01-single-column-prose.pdf');
     const [r1] = await textRows(page, 1, 8);
@@ -64,11 +71,13 @@ test.describe('bookmarks (T-205, FR-BKM-01..03)', () => {
     await page.keyboard.press('Escape');
     await expect.poll(async () => (await bookmarks(page)).length).toBe(2);
 
+    await page.getByRole('tab', { name: 'Annotations' }).click();
     await page.getByRole('tab', { name: 'Bookmarks' }).click();
-    const items = page.getByRole('tabpanel', { name: 'Bookmarks' }).getByRole('button');
+    const panel = page.getByRole('tabpanel', { name: 'Bookmarks' });
+    const items = panel.getByRole('listitem').getByRole('button');
     await expect(items).toHaveCount(2);
-    await expect(items.first()).toContainText('p. 1');
-    await expect(items.nth(1)).toContainText('p. 3');
+    await expect(panel.getByRole('region', { name: 'Page 1' }).getByRole('button')).toHaveCount(1);
+    await expect(panel.getByRole('region', { name: 'Page 3' }).getByRole('button')).toHaveCount(1);
     await items.first().click();
     await expect(page.locator('.page[data-page-number="1"] .mg-flash')).toBeAttached();
     await expect(page.locator('.mg-flash')).toHaveCount(0, { timeout: 3000 }); // the pulse ends after 1.2 s
@@ -114,6 +123,8 @@ test.describe('bookmarks (T-205, FR-BKM-01..03)', () => {
     test.skip(isMobile, 'keyboard');
     await openDoc(page, '08-scanned-no-text.pdf');
     await page.keyboard.press('b');
-    await expect.poll(async () => (await bookmarks(page)).map((b) => [b.page, b.label, b.anchor.rects[0]])).toEqual([[1, null, { x: 0, y: 0, w: 1, h: 1 }]]);
+    await expect
+      .poll(async () => (await bookmarks(page)).map((b) => [b.page, b.label, b.anchor.rects[0]]))
+      .toEqual([[1, null, { x: 0, y: 0, w: 1, h: 1 }]]);
   });
 });

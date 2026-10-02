@@ -18,8 +18,11 @@ interface ReaderState {
   flashAt: (anchor: Anchor) => void;
   resume: { anchor: Anchor; id: number } | null;
   markResume: (anchor: Anchor) => void;
-  /** Open note editor (FR-NOT-01/03): the line it is anchored to and the notes on it (none = a new note). */
-  notes: { anchor: Anchor; rows: AnnotationRow[]; id: number } | null;
+  /**
+   * Open note editor (FR-NOT-01/03): the line it is anchored to, the notes on it (none = a new note), and the line
+   * selection to give back on close, so B / H / J keep working on that line.
+   */
+  notes: { anchor: Anchor; rows: AnnotationRow[]; id: number; restore: Selection | null } | null;
   openNotes: (anchor: Anchor, rows: AnnotationRow[]) => void;
   closeNotes: () => void;
 }
@@ -42,6 +45,12 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
     setTimeout(() => get().resume?.id === id && set({ resume: null }), RESUME_MARK_MS);
   },
   notes: null,
-  openNotes: (anchor, rows) => set({ notes: { anchor, rows, id: ++flashes }, selection: null }),
-  closeNotes: () => set({ notes: null }),
+  openNotes: (anchor, rows) => {
+    const sel = get().selection;
+    set({ notes: { anchor, rows, id: ++flashes, restore: sel?.kind === 'line' ? sel : null }, selection: null });
+  },
+  closeNotes: () => {
+    const notes = get().notes;
+    if (notes) set({ notes: null, selection: notes.restore });
+  },
 }));

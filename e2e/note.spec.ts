@@ -40,7 +40,9 @@ test.describe('notes (T-207, FR-NOT-01..03)', () => {
     await page.keyboard.type(' Check chapter 2.');
     await page.keyboard.press('Escape');
     await expect(editor(page)).toHaveCount(0);
+    await expect(page.getByRole('toolbar', { name: 'Line actions' })).toBeVisible(); // the line is selected again: B, H, J go on
     await expect.poll(async () => (await notes(page)).map((n) => n.body)).toEqual(['Why slowly? Check chapter 2.']);
+    await page.keyboard.press('Escape');
 
     await expect(marker(page)).toHaveAttribute('aria-label', 'Note: Why slowly? Check chapter 2.');
     await marker(page).hover();
@@ -51,6 +53,7 @@ test.describe('notes (T-207, FR-NOT-01..03)', () => {
     await page.keyboard.type('!');
     await page.keyboard.press(`${PRIMARY}+Enter`); // saves and closes
     await expect(editor(page)).toHaveCount(0);
+    await expect(page.getByRole('toolbar', { name: 'Line actions' })).toHaveCount(0); // opened from the marker: no line to give back
     await expect.poll(async () => (await notes(page)).map((n) => n.body)).toEqual(['Why slowly? Check chapter 2.!']);
   });
 

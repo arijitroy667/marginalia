@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState, type ReactNode, type RefObject } from 'react';
 import { groupByLine, intersects } from '../../../core/anchors/anchor';
 import type { AnnotationRow } from '../../../core/db/models';
-import { db } from '../../../core/db/schema';
+import { annotationsRepo } from '../../../core/db/repos';
 import { en } from '../../../shared/i18n/en';
 import { useSettings } from '../../settings/useSettings';
 import { getPageLines } from '../lines/pageLines';
@@ -44,15 +44,7 @@ export function Overlays({ ready, getViewer, container, pdf, documentId, docHash
   const notes = useReaderStore((s) => s.notes);
   const { gutterStyle } = useSettings();
   const [textless, setTextless] = useState<ReadonlySet<number>>(new Set());
-  const annotations = useLiveQuery(
-    () =>
-      db.annotations
-        .where('documentId')
-        .equals(documentId)
-        .filter((a) => a.deletedAt === null)
-        .toArray(),
-    [documentId],
-  );
+  const annotations = useLiveQuery(() => annotationsRepo.ofDocument(documentId), [documentId]);
 
   const byPage = useMemo(() => {
     const rows = new Map<number, AnnotationRow[]>();
