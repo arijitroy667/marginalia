@@ -70,7 +70,7 @@ describe.skipIf(!enabled)('tenancy: RLS + storage + constraints (two users)', ()
       .select('updated_at')
       .single();
     expect(doc.error).toBeNull();
-    expect(Date.now() - Date.parse(doc.data!.updated_at)).toBeLessThan(5 * 60_000);
+    expect(Date.now() - Date.parse(String(doc.data?.updated_at))).toBeLessThan(5 * 60_000);
 
     const anchor = { v: 1, page: 2, rects: [{ x: 0.1, y: 0.2, w: 0.5, h: 0.02 }], quote: { exact: 'q', prefix: '', suffix: '' } };
     const ann = await A.db.from('annotations').insert({ id: randomUUID(), document_id: docA, kind: 'highlight', page: 2, anchor, color_id: 1 });
@@ -134,8 +134,11 @@ describe.skipIf(!enabled)('tenancy: RLS + storage + constraints (two users)', ()
   });
 
   it('resumable (TUS) upload > 6 MB into A\'s folder; B is refused', async () => {
-    const ref = new URL(URL_).hostname.split('.')[0];
-    const endpoint = `https://${ref}.storage.supabase.co/storage/v1/upload/resumable`;
+    // hosted: direct storage host (Supabase docs); local `supabase start`: the API gateway
+    const host = new URL(URL_).hostname;
+    const endpoint = host.endsWith('.supabase.co')
+      ? `https://${host.split('.')[0]}.storage.supabase.co/storage/v1/upload/resumable`
+      : `${URL_}/storage/v1/upload/resumable`;
     const data = randomBytes(7 * 1024 * 1024);
     const upload = (user: TestUser, objectName: string) =>
       new Promise<void>((resolve, reject) => {

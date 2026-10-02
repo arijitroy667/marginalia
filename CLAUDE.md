@@ -5,9 +5,10 @@ Source of truth: `docs/PRD.md`. Read the section named in your task before codin
 ## What this is
 A book-style PDF reader where the *line* is a first-class object: one-action highlight (user-defined colour meanings), per-line bookmarks with auto-resume, per-line notes with gutter markers, themes that recolour the document. React + TypeScript PWA, PDF.js, Dexie (IndexedDB) local-first, Supabase (Postgres/Auth/Storage) as cloud source of truth.
 
-## Commands (fill in after T-100)
-- `pnpm dev` · `pnpm build` · `pnpm typecheck` · `pnpm lint` · `pnpm test` (Vitest) · `pnpm e2e` (Playwright)
-- `supabase start` / `supabase db reset` / `supabase gen types typescript --local > src/core/supabase/types.ts`
+## Commands
+- `pnpm dev` · `pnpm build` · `pnpm typecheck` (app + node + pure-core projects) · `pnpm lint` · `pnpm test` (Vitest unit) · `pnpm e2e` (Playwright vs production build: Chromium, WebKit, Pixel 7, iPhone 14)
+- Hosted Supabase via `.env.local` (see `.env.example`): `pnpm db:push` (migrations) · `pnpm db:types > src/core/supabase/types.ts` · `pnpm test:db` (two-user tenancy suite)
+- Fixtures: `python fixtures/generate.py [--large] [--force]` · real review corpus: `node fixtures/fetch-real.mjs`
 
 ## Architecture rules (hard)
 1. `src/core/line-engine` and `src/core/anchors` are pure TS: no React, DOM, Supabase, or PDF.js types.

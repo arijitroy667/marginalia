@@ -1,0 +1,11 @@
+dist
+dev-dist
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+fixtures
+public/pdfjs
+spikes
+supabase/.temp
+*.pdf
