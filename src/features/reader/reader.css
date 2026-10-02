@@ -1,0 +1,21 @@
+@import 'pdfjs-dist/web/pdf_viewer.css';
+
+/* PDF.js sizes page boxes for the browser default content-box; Tailwind's preflight sets border-box on
+   everything, which would shrink each page's content area by its 9px border (unlayered: beats preflight). */
+.pdfViewer,
+.pdfViewer *,
+.pdfViewer *::before,
+.pdfViewer *::after {
+  box-sizing: content-box;
+}
+
+.reader-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--ui-bg);
+}
+.reader-scroll .pdfViewer {
+  padding-bottom: 2rem;
+}

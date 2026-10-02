@@ -18,7 +18,8 @@
     "e2e": "playwright test",
     "db:push": "node scripts/db.mjs push",
     "db:types": "node scripts/db.mjs types",
-    "test:db": "vitest run --project db"
+    "test:db": "vitest run --project db",
+    "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",

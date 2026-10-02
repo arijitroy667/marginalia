@@ -6,6 +6,10 @@ import * as pdfjs from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+// pdf_viewer.mjs reads the core library from this global (ADR 0008)
+(globalThis as { pdfjsLib?: unknown }).pdfjsLib = pdfjs;
+
+export { pdfjs };
 
 const base = `${import.meta.env.BASE_URL}pdfjs/`;
 export const PDF_ASSETS = {

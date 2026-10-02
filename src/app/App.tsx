@@ -19,7 +19,8 @@ const router = createBrowserRouter([
           { path: '/settings', element: <Page title={en.settings.title} /> },
         ],
       },
-      { path: '/read/:documentId', element: <Page title={en.reader.title} /> },
+      // reader + PDF.js load on demand (NFR-PERF-08)
+      { path: '/read/:documentId', lazy: async () => ({ Component: (await import('../features/reader/ReaderPage')).ReaderPage }) },
       { path: '/login', element: <Page title={en.auth.title} /> },
     ],
   },

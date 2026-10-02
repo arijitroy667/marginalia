@@ -33,7 +33,7 @@ export function idb<T = Record<string, unknown>>(page: Page, store: string): Pro
 /** Adds files through the Add PDF button's file chooser. */
 export async function addViaPicker(page: Page, ...names: string[]) {
   const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add PDF' }).click();
+  await page.getByRole('button', { name: 'Add PDF' }).first().click(); // empty library shows a second one
   await (await chooser).setFiles(names.map(fixture));
 }
 
