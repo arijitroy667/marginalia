@@ -52,7 +52,7 @@ These are deliberate, numerically-grounded corrections to assumptions in the ori
 | H1 | **Acrobat and Kindle can already highlight, annotate and bookmark.** "They cannot" is false and is a weak pitch. What they lack is *speed and unity*: attaching a note to a line in Acrobat is typically a select → toolbar/context-menu → comment → type sequence (an estimate to be measured, see NFR-PERF-06). | The moat is **interaction cost + one unified annotation model + sync**. Success is measured in inputs-per-action (§2.2), not feature checklists. Before polishing, spend 30 minutes using Xodo, PDF Expert, Zotero's reader and Readwise Reader on a real book; steal what works. |
 | H2 | **A PDF has no concept of a "line".** It stores positioned glyph runs. PDF.js `getTextContent()` returns text *items* (`str`, `transform`, `width`, `height`, `hasEOL`), which are not lines. Multi-column layouts, footnotes, superscripts, tables and hyphenation all break naive grouping. | The **Line Engine** (§8.5) is the single point of failure of the whole product. It is built and gated first (Milestone M0, spike S1) with numeric exit criteria. Everything else here is commodity. |
 | H3 | **"Press Alt+Ctrl to bookmark" is not viable.** Modifier-only chords cannot be bound reliably in browsers, `Ctrl+Alt` equals `AltGr` on many European layouts, and phones have no keyboard. | Default quick-bookmark is the single key **`B`** (when no text field is focused) plus an on-screen button on touch. Rebindable (FR-KEY-04). Modifier-only chords are explicitly unsupported. Browser-reserved combos (`Ctrl+D`, `Ctrl+B` in Firefox, `Alt+letter` menus) are avoided. |
-| H4 | **"The whole PDF changes theme" is only partly achievable.** PDF.js paints to a `<canvas>`; pixels cannot be restyled. Vector text/paths can be recoloured at render time, but embedded images and scanned pages cannot. A naive `invert()` filter inverts photos and diagrams too. | Theme engine uses two strategies behind one interface (§8.7), chosen per document type: render-time `pageColors` for text PDFs, CSS filter for scanned/image-only pages. Spike S2 decides defaults on real PDFs. |
+| H4 | **"The whole PDF changes theme" is only partly achievable.** PDF.js paints to a `<canvas>`; pixels cannot be restyled. Vector text/paths can be recoloured at render time, but embedded images and scanned pages cannot. A naive `invert()` filter inverts photos and diagrams too. | Theme engine (§8.7). Spike S2 (ADR 0002) found PDF.js 6.3.289's `pageColors` is a whole-canvas posterizing filter, so v1 uses one CSS-filter strategy with exact token colours, restoring image regions from the unfiltered canvas in dark themes; scanned pages stay inverted. |
 | H5 | **A4 / two-column PDFs on a 6" phone are miserable regardless of the app.** Fit-width text is roughly 5 to 6 pt. True reflow of arbitrary PDFs is a research-grade problem. | Reflow is a non-goal for v1. Phone UX relies on fit-width + fast pan/zoom + (P2) column-snap smart zoom. If the phone becomes the primary device, reconsider EPUB (v2). |
 | H6 | **Cloud-from-day-1 on Supabase's free tier has hard ceilings**: about 1 GB file storage (~20 books at 50 MB), 5 GB egress/month (~100 full 50 MB downloads), and projects **pause after ~7 days of inactivity** (figures from the 2026 tier summaries; re-verify in the dashboard in spike S5). The free plan also caps a single upload (reported 50 MB; verify). | Per-document `storage` mode (`cloud` | `device`) so annotations sync even when the file does not; local blob cache to cut egress; `MAX_CLOUD_FILE_BYTES` config; budget for Pro if this becomes daily-driver infrastructure. |
 | H7 | **iOS PWAs are second-class**: no Background Sync API, no `beforeinstallprompt` (install is manual via Share → Add to Home Screen), and Safari *tab* storage can be evicted after ~7 days without interaction (installed home-screen apps are exempt). | Sync runs only while the app is open/foreground; cloud is the source of truth; call `navigator.storage.persist()`; in-app install helper (M4). |
@@ -134,7 +134,7 @@ EPUB/MOBI/other formats; AI features (summaries, chat, auto-tagging); sharing, c
 | **Gutter** | The margin lane at the page's right edge holding note/bookmark markers. |
 | **Resume point** | One row per document: last reading line + progress + device label; last-write-wins. |
 | **Document identity** | SHA-256 of the file bytes (`content_hash`). Same file on two devices = same document. |
-| **Theme strategy** | The mechanism that recolours rendering: `pageColors` (render-time) or `cssFilter`. |
+| **Theme strategy** | The mechanism that recolours rendering: a composite-time CSS filter on the page canvas, with image restore in dark themes (ADR 0002). |
 
 ---
 
@@ -226,7 +226,7 @@ Each row is independently testable. "AC" = acceptance criteria. Test each AC wit
 | ID | Pri | Requirement | AC |
 |---|---|---|---|
 | FR-THM-01 | P0 | Built-in themes: **Light**, **Warm** (sepia paper), **Dark**, plus *System* (follows `prefers-color-scheme`). P1: **Night-warm** (dark + warm). | |
-| FR-THM-02 | P0 | Theme recolours the **document rendering** and app chrome. | Dark text PDFs: light text on dark background with images not colour-inverted when the `pageColors` strategy applies (S2). Scanned/image-only pages use the CSS-filter strategy with an "Invert images" toggle (default ON for scanned, OFF for text PDFs). |
+| FR-THM-02 | P0 | Theme recolours the **document rendering** and app chrome. | Dark text PDFs: light text on dark background with images not colour-inverted (image regions restored, ADR 0002). Scanned/image-only pages are inverted. An "Invert images" toggle overrides (default ON for scanned, OFF for text PDFs). |
 | FR-THM-03 | P0 | **Warmth** slider 0 to 100 % (colour-temperature overlay, `mix-blend-mode: multiply`, `pointer-events: none`) available in every theme. P1: brightness dimmer 50 to 100 %. | Overlay never blocks input. |
 | FR-THM-04 | P0 | Changing theme MUST NOT re-fetch or re-parse the PDF. | Visible pages update < 300 ms (NFR-PERF-05). |
 | FR-THM-05 | P0 | Highlights, gutter icons, toolbars stay legible in every theme (per-theme tokens). | Contrast ≥ 3:1 for icons, ≥ 4.5:1 text-over-highlight. |
@@ -484,30 +484,22 @@ Rules:
 
 ### 8.7 Theme engine (`features/theme`)
 
-One interface, two strategies; the active strategy is chosen per document (text PDFs vs scanned/image-only) with a user override.
+**Decided in S2 (`docs/adr/0002-theme-strategy.md`): one strategy, `cssFilter`, for every document.** In the pinned PDF.js (6.3.289) `pageColors` is a whole-canvas luminance filter that posterizes images and coloured content to a 6-step ramp and has no runtime setter (switching rebuilds the viewer), so it is not used.
 
 ```ts
 export type ThemeId = 'system' | 'light' | 'warm' | 'dark' | 'night-warm';
 
 export interface ThemeTokens {
-  pageBg: string; pageFg: string;     // for pageColors strategy
+  pageBg: string; pageFg: string;     // targets of the page filter: white -> pageBg, black -> pageFg
   uiBg: string; uiFg: string; uiMuted: string; accent: string;
   highlight: Record<1|2|3|4|5|6|7|8, string>;  // per-theme tuned colours
   highlightBlend: 'multiply' | 'normal';
   highlightAlpha: number;
 }
-
-export interface PageRecolorStrategy {
-  id: 'pageColors' | 'cssFilter';
-  /** merged into the PDF.js render/viewer options (verify exact entry point in S2) */
-  renderOptions(t: ThemeTokens): { pageColors?: { background: string; foreground: string } };
-  /** CSS applied to each page canvas */
-  canvasStyle(t: ThemeTokens, o: { invertImages: boolean; warmth: number }): React.CSSProperties;
-}
 ```
 
-- **`pageColors`** (render-time): PDF.js can override background/foreground colours while rendering vector content. Result: true light-on-dark text, photos untouched. Does nothing for scanned/image-only pages. Verify the exact option (viewer-level `pageColors` vs render parameter) and whether switching at runtime needs a re-render (`forceRendering`) in the installed version (S2).
-- **`cssFilter`**: dark = `invert(1) hue-rotate(180deg)` (+ optional `contrast`); warm = `sepia()`/`saturate()` or a `multiply` tint. Cheap and instant; inverts images (hence the toggle).
+- **`cssFilter`** on each page's `.canvasWrapper` (composite-time only; canvas pixels untouched, no re-render): warm = inline SVG `feComponentTransfer` linear map black → `pageFg`, white → `pageBg`; dark = `hue-rotate(180deg)` + the same kind of map with negative slope (luminance inverted, hue kept). Exact token colours; instant.
+- **Images in dark themes**: with "Invert images" OFF (default for text PDFs) image rects (PDF.js `imagesRightClickMinSize` → `pdfPage.imageCoordinates`) are restored from the unfiltered canvas pixels into overlay canvases above the canvas; pages > 80 % covered by images count as scanned and stay inverted (default ON for scanned). Pages that are already dark (mean luminance < 0.35) skip the dark filter.
 - **Warmth overlay**: a full-viewport `div` with `mix-blend-mode: multiply`, `pointer-events: none`, colour derived from the 0 to 100 % slider, applied over the reader (not the chrome's popovers).
 - App chrome themes via CSS variables on `:root[data-theme]`.
 
