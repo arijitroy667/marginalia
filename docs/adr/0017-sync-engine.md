@@ -45,3 +45,14 @@ overwritten, invalid rows ignored, two-device concurrent edit / edit-vs-delete /
 T-102 (push the migration, generated types), T-103 (auth + `startSync`/`stopSync`, owner check), T-301 (409 on
 `(user_id, content_hash)` → adopt the existing id), T-305 (Sync issues screen, chaos tests against the real
 project), T-304 (Realtime, P1) through the same `apply`.
+
+## Duplicate-document merge (T-301, FR-SYN-09)
+
+A document push that fails with `23505` (the live `(user_id, content_hash)` index) means another device added the
+same bytes first. The engine fetches that live document and, in one transaction, moves local annotations, the
+reading position (keeping a newer local one if the target already has none), outbox payloads (position items
+change their entity id too) and the cached file and cover to its id, deletes the local duplicate and stores the
+server row. Annotations and positions then push under the adopted id in the same run. The local document's own
+metadata (title, last opened) yields to the existing row. Tested with two offline "devices"
+(`engine.test.ts`); the E2E with two browser contexts needs the live project (T-305).
+

@@ -37,5 +37,16 @@ export function supabaseTransport(sb: SupabaseClient): SyncTransport {
       if (error) throw new Error(error.message);
       return (data ?? []) as ServerRow[];
     },
+
+    async findLiveDocument(contentHash: string): Promise<ServerRow | null> {
+      const { data, error } = await sb
+        .from('documents')
+        .select('*')
+        .eq('content_hash', contentHash)
+        .is('deleted_at', null)
+        .maybeSingle<ServerRow>();
+      if (error) throw new Error(error.message);
+      return data;
+    },
   };
 }

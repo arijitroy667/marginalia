@@ -27,7 +27,12 @@ export interface SyncTransport {
   push(table: SyncTable, rows: ServerRow[]): Promise<PushResult>;
   /** Rows with (updated_at, key) > `after`, ascending. Throws on network failure. */
   pull(table: SyncTable, after: Cursor | null, limit: number): Promise<ServerRow[]>;
+  /** The user's live document with these bytes (FR-SYN-09), or null. Throws on network failure. */
+  findLiveDocument(contentHash: string): Promise<ServerRow | null>;
 }
+
+/** Postgres unique_violation: for documents, the live (user_id, content_hash) index (FR-SYN-09). */
+export const UNIQUE_VIOLATION = '23505';
 
 /** 401 = session, 408/429/5xx/network = transient; 409 is a conflict handled by the caller (FR-SYN-09). */
 export const isRetryable = (status: number) =>
@@ -101,15 +106,21 @@ export function createSyncEngine(transport: SyncTransport, userId: string, db: A
           await acknowledge(entity, batch, res.rows);
           continue;
         }
-        if (isRetryable(res.status)) {
+        const duplicate = entity === 'document' && res.code === UNIQUE_VIOLATION;
+        if (isRetryable(res.status) && !duplicate) {
           await fail(batch, res.message, false);
           return res.status === 401 ? 'auth' : 'retry';
         }
-        // permanent: one bad row fails the whole statement, so isolate it row by row
+        // permanent error or a duplicate document: one row fails the whole statement, so go row by row
         for (const it of batch) {
           const one = batch.length === 1 ? res : await transport.push(table, [toServer(entity, it.payload, userId)]);
           if (one.ok) await acknowledge(entity, [it], one.rows);
-          else if (isRetryable(one.status)) {
+          else if (entity === 'document' && one.code === UNIQUE_VIOLATION) {
+            if (!(await adopt(it))) {
+              await fail([it], one.message, false);
+              return 'retry';
+            }
+          } else if (isRetryable(one.status)) {
             await fail([it], one.message, false);
             return one.status === 401 ? 'auth' : 'retry';
           } else await fail([it], one.message, true);
@@ -117,6 +128,54 @@ export function createSyncEngine(transport: SyncTransport, userId: string, db: A
       }
     }
     return 'done';
+  }
+
+  /**
+   * FR-SYN-09: another device already added these bytes. Adopt its document id: move annotations, the reading
+   * position, outbox payloads and the cached file/cover to it, drop the local duplicate, all in one transaction.
+   * Children then push under the adopted id later in the same run (PUSH_ORDER).
+   */
+  async function adopt(item: OutboxItem): Promise<boolean> {
+    const local = item.payload as { id: string; contentHash: string };
+    const remote = await transport.findLiveDocument(local.contentHash);
+    const parsed = remote && fromServer('documents', remote);
+    if (parsed?.table !== 'documents') return false; // gone or unreadable meanwhile: retry later
+    const from = local.id;
+    const to = parsed.row.id;
+    await db.transaction(
+      'rw',
+      [db.documents, db.annotations, db.positions, db.outbox, db.files, db.covers],
+      async () => {
+        await db.annotations.where('documentId').equals(from).modify({ documentId: to });
+        const pos = await db.positions.get(from);
+        if (pos) {
+          await db.positions.delete(from);
+          if (!(await db.positions.get(to))) await db.positions.put({ ...pos, documentId: to });
+        }
+        for (const o of await db.outbox.toArray()) {
+          if (o.entity === 'document' && o.entityId === from) await db.outbox.delete(o.seq!);
+          else if ((o.payload as { documentId?: string } | null)?.documentId === from)
+            await db.outbox.put({
+              ...o,
+              entityId: o.entity === 'position' ? to : o.entityId,
+              payload: { ...(o.payload as object), documentId: to },
+            });
+        }
+        const file = await db.files.get(from);
+        if (file) {
+          await db.files.delete(from);
+          if (!(await db.files.get(to))) await db.files.put({ ...file, documentId: to });
+        }
+        const cover = await db.covers.get(from);
+        if (cover) {
+          await db.covers.delete(from);
+          if (!(await db.covers.get(to))) await db.covers.put({ ...cover, documentId: to });
+        }
+        await db.documents.delete(from);
+        await db.documents.put(parsed.row);
+      },
+    );
+    return true;
   }
 
   async function hasPending(entity: OutboxEntity, id: string): Promise<boolean> {

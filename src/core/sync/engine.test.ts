@@ -39,6 +39,19 @@ class FakeServer implements SyncTransport {
         !this.tables.documents.has(String(r.document_id))
       )
         return Promise.resolve({ ok: false, status: 409, code: '23503', message: 'foreign key violation' });
+      if (
+        table === 'documents' &&
+        r.deleted_at == null &&
+        [...this.tables.documents.values()].some(
+          (d) => d.content_hash === r.content_hash && d.id !== r.id && d.deleted_at == null,
+        )
+      )
+        return Promise.resolve({
+          ok: false,
+          status: 409,
+          code: '23505',
+          message: 'duplicate key value violates unique constraint',
+        });
       if (table === 'annotations' && r.kind === 'highlight' && r.color_id == null)
         return Promise.resolve({ ok: false, status: 400, code: '23514', message: 'check violation' });
     }
@@ -54,6 +67,12 @@ class FakeServer implements SyncTransport {
       return stored;
     });
     return Promise.resolve({ ok: true, rows: out });
+  }
+
+  findLiveDocument(contentHash: string): Promise<ServerRow | null> {
+    return Promise.resolve(
+      [...this.tables.documents.values()].find((d) => d.content_hash === contentHash && d.deleted_at == null) ?? null,
+    );
   }
 
   pull(table: SyncTable, after: Cursor | null, limit: number): Promise<ServerRow[]> {
@@ -288,6 +307,49 @@ describe('two devices, last write wins by server time (FR-SYN-08)', () => {
     expect(server.tables.profiles.get(USER)).toMatchObject({ id: USER, settings: { theme: 'dark' } });
     await createSyncEngine(server, USER, B).pull();
     expect((await B.meta.get('settings'))?.value).toMatchObject({ settings: { theme: 'dark' } });
+  });
+});
+
+describe('duplicate-document merge (FR-SYN-09)', () => {
+  it('two devices add the same file offline: the second adopts the first id and keeps its annotations', async () => {
+    const same = { contentHash: 'ab'.repeat(32) };
+    await write(A, 'document', doc(1, same));
+    await write(A, 'annotation', note(1, 1));
+    await write(B, 'document', doc(2, same)); // same bytes, B's own id
+    await write(B, 'annotation', note(2, 2, { kind: 'note', colorId: null, body: 'from B' }));
+    await B.positions.put({
+      documentId: uuid(2),
+      page: 3,
+      anchor: null,
+      progress: 0.3,
+      deviceId: 'b',
+      deviceLabel: null,
+      updatedAt: t0,
+      localUpdatedAt: 0,
+    });
+    await B.outbox.add({
+      entity: 'position',
+      entityId: uuid(2),
+      op: 'upsert',
+      payload: { documentId: uuid(2), page: 3, anchor: null, progress: 0.3, deviceId: 'b', deviceLabel: null },
+      attempts: 0,
+      status: 'pending',
+      createdAt: 0,
+    });
+    await B.files.put({ documentId: uuid(2), blob: new Blob(['%PDF']), size: 4, lastAccessAt: 0, pinned: false });
+
+    await createSyncEngine(server, USER, A).push();
+    expect(await createSyncEngine(server, USER, B).push()).toBe('done');
+
+    expect(server.tables.documents.size).toBe(1);
+    expect(server.tables.annotations.get(uuid(1002))).toMatchObject({ document_id: uuid(1), body: 'from B' });
+    expect(server.tables.reading_positions.get(uuid(1))).toMatchObject({ page: 3 });
+    expect((await B.documents.toArray()).map((d) => d.id)).toEqual([uuid(1)]);
+    expect((await B.annotations.get(uuid(1002)))!.documentId).toBe(uuid(1));
+    expect(await B.positions.get(uuid(1))).toMatchObject({ page: 3 });
+    expect(await B.files.get(uuid(1))).toBeDefined();
+    expect(await B.files.get(uuid(2))).toBeUndefined();
+    expect(await B.outbox.count()).toBe(0);
   });
 });
 
