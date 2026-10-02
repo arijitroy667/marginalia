@@ -54,7 +54,7 @@ These are deliberate, numerically-grounded corrections to assumptions in the ori
 | H3 | **"Press Alt+Ctrl to bookmark" is not viable.** Modifier-only chords cannot be bound reliably in browsers, `Ctrl+Alt` equals `AltGr` on many European layouts, and phones have no keyboard. | Default quick-bookmark is the single key **`B`** (when no text field is focused) plus an on-screen button on touch. Rebindable (FR-KEY-04). Modifier-only chords are explicitly unsupported. Browser-reserved combos (`Ctrl+D`, `Ctrl+B` in Firefox, `Alt+letter` menus) are avoided. |
 | H4 | **"The whole PDF changes theme" is only partly achievable.** PDF.js paints to a `<canvas>`; pixels cannot be restyled. Vector text/paths can be recoloured at render time, but embedded images and scanned pages cannot. A naive `invert()` filter inverts photos and diagrams too. | Theme engine (§8.7). Spike S2 (ADR 0002) found PDF.js 6.3.289's `pageColors` is a whole-canvas posterizing filter, so v1 uses one CSS-filter strategy with exact token colours, restoring image regions from the unfiltered canvas in dark themes; scanned pages stay inverted. |
 | H5 | **A4 / two-column PDFs on a 6" phone are miserable regardless of the app.** Fit-width text is roughly 5 to 6 pt. True reflow of arbitrary PDFs is a research-grade problem. | Reflow is a non-goal for v1. Phone UX relies on fit-width + fast pan/zoom + (P2) column-snap smart zoom. If the phone becomes the primary device, reconsider EPUB (v2). |
-| H6 | **Cloud-from-day-1 on Supabase's free tier has hard ceilings**: about 1 GB file storage (~20 books at 50 MB), 5 GB egress/month (~100 full 50 MB downloads), and projects **pause after ~7 days of inactivity** (figures from the 2026 tier summaries; re-verify in the dashboard in spike S5). The free plan also caps a single upload (reported 50 MB; verify). | Per-document `storage` mode (`cloud` | `device`) so annotations sync even when the file does not; local blob cache to cut egress; `MAX_CLOUD_FILE_BYTES` config; budget for Pro if this becomes daily-driver infrastructure. |
+| H6 | **Cloud-from-day-1 on Supabase's free tier has hard ceilings**: about 1 GB file storage (~20 books at 50 MB), 5 GB egress/month (~100 full 50 MB downloads), and projects **pause after ~7 days of inactivity** (verified against supabase.com/pricing on 2026-10-02: 1 GB storage, 50 MB max upload, 5 GB egress, pause after 1 week; ADR 0005). The free plan also caps a single upload (reported 50 MB; verify). | Per-document `storage` mode (`cloud` | `device`) so annotations sync even when the file does not; local blob cache to cut egress; `MAX_CLOUD_FILE_BYTES` config; budget for Pro if this becomes daily-driver infrastructure. |
 | H7 | **iOS PWAs are second-class**: no Background Sync API, no `beforeinstallprompt` (install is manual via Share → Add to Home Screen), and Safari *tab* storage can be evicted after ~7 days without interaction (installed home-screen apps are exempt). | Sync runs only while the app is open/foreground; cloud is the source of truth; call `navigator.storage.persist()`; in-app install helper (M4). |
 | H8 | **Last-write-wins loses concurrent edits.** | Acceptable for a single user on several devices; documented and tested (FR-SYN-08). Note revision history is P2. |
 
@@ -604,7 +604,7 @@ export const PALETTE_MAX = 8;
 
 ### 9.1 Postgres (Supabase) — `supabase/migrations/0001_init.sql`
 
-Design notes: client-generated UUIDs (idempotent offline creates); `updated_at` is **server-assigned by trigger** (clients cannot forge it); soft deletes via `deleted_at`; every row carries `user_id` and is protected by RLS; `page` duplicates `anchor.page` for indexing and is checked for consistency.
+Design notes: client-generated UUIDs (idempotent offline creates); `updated_at` is **server-assigned by trigger** (clients cannot forge it); soft deletes via `deleted_at`; every row carries `user_id` and is protected by RLS; `page` duplicates `anchor.page` for indexing and is checked for consistency. Child rows reference their document through a composite `(document_id, user_id)` foreign key, so a user can never attach rows to another user's document (RLS alone does not cover FK targets; ADR 0005).
 
 ```sql
 create type public.annotation_kind as enum ('highlight', 'note', 'bookmark');
@@ -637,12 +637,14 @@ create table public.documents (
 
 create unique index documents_user_hash_live
   on public.documents (user_id, content_hash) where deleted_at is null;
+-- target of the composite FKs below: a child row's owner must equal its document's owner (S5, ADR 0005)
+alter table public.documents add constraint documents_id_user_key unique (id, user_id);
 create index documents_sync_idx on public.documents (user_id, updated_at, id);
 
 create table public.annotations (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  document_id uuid not null references public.documents (id) on delete cascade,
+  document_id uuid not null,
   kind public.annotation_kind not null,
   page integer not null check (page > 0),
   anchor jsonb not null,                          -- Anchor v1 (see 8.6), Zod-validated on the client
@@ -654,7 +656,9 @@ create table public.annotations (
   deleted_at timestamptz,
   constraint annotations_page_matches_anchor check ((anchor ->> 'page')::integer = page),
   constraint annotations_highlight_needs_color check (kind <> 'highlight' or color_id is not null),
-  constraint annotations_note_needs_body check (kind <> 'note' or body is not null)
+  constraint annotations_note_needs_body check (kind <> 'note' or body is not null),
+  constraint annotations_document_fk foreign key (document_id, user_id)
+    references public.documents (id, user_id) on delete cascade
 );
 
 create index annotations_doc_page_idx
@@ -663,14 +667,16 @@ create index annotations_sync_idx on public.annotations (user_id, updated_at, id
 
 create table public.reading_positions (
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  document_id uuid not null references public.documents (id) on delete cascade,
+  document_id uuid not null,
   page integer not null check (page > 0),
   anchor jsonb,                                   -- reading-line anchor (nullable for page-level resume)
   progress real not null check (progress >= 0 and progress <= 1),
   device_id text not null,
   device_label text,
   updated_at timestamptz not null default now(),
-  primary key (user_id, document_id)
+  primary key (user_id, document_id),
+  constraint reading_positions_document_fk foreign key (document_id, user_id)
+    references public.documents (id, user_id) on delete cascade
 );
 
 create index reading_positions_sync_idx on public.reading_positions (user_id, updated_at);

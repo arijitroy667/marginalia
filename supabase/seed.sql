@@ -1,0 +1,2 @@
+-- Seed for local development only (hosted projects are never seeded). Intentionally empty:
+-- every row belongs to an auth user, and test users are created by supabase/tests/rls.test.ts.
