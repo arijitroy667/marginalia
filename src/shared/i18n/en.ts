@@ -205,6 +205,15 @@ export const en = {
     later: 'Later',
     offlineReady: 'Ready to work offline.',
   },
+  sync: {
+    synced: 'Synced',
+    syncing: 'Syncing…',
+    offline: (pending: number) => (pending ? `Offline · ${pending} pending` : 'Offline'),
+    error: 'Sync error',
+    issues: (n: number) => `${n} ${n === 1 ? 'change needs' : 'changes need'} attention`,
+    retry: 'Retry',
+    signin: 'Sign in to sync',
+  },
   settings: { title: 'Settings' },
   auth: { title: 'Sign in' },
 } as const;

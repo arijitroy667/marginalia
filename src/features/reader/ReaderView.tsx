@@ -10,6 +10,7 @@ import { BookmarkIcon } from '../../shared/ui/icons';
 import { toast } from '../../shared/ui/toast';
 import { updateSettings, useSettings } from '../settings/useSettings';
 import { PageFilters } from '../theme/PageFilters';
+import { SyncPill } from '../sync/SyncPill';
 import { ThemeMenu } from '../theme/ThemeMenu';
 import { warmthColor } from '../theme/tokens';
 import { useResolvedTheme } from '../theme/useTheme';
@@ -516,6 +517,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
           >
             ⌕
           </button>
+          {!compact && <SyncPill />}
           {!compact && <ThemeMenu reader triggerRef={themeTrigger} />}
         </header>
         {finding && ready && <FindBar getViewer={getViewer} onClose={() => setFinding(false)} />}

@@ -1,4 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router';
+import { SyncPill } from '../features/sync/SyncPill';
 import { ThemeMenu } from '../features/theme/ThemeMenu';
 import { en } from '../shared/i18n/en';
 
@@ -27,7 +28,8 @@ export function Shell() {
             {en.app.nav.settings}
           </NavLink>
         </nav>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <SyncPill />
           <ThemeMenu />
         </div>
       </header>
