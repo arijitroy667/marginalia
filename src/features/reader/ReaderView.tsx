@@ -8,6 +8,7 @@ import { canHandleSingleKey, isPrimaryChord } from '../../shared/utils/keys';
 import { toast } from '../../shared/ui/toast';
 import { ThemeMenu } from '../theme/ThemeMenu';
 import { FindBar } from './FindBar';
+import { Overlays } from './overlay/Overlays';
 import { usePinch } from './gestures/usePinch';
 import { classifyPointer, type PointerKind } from './gestures/tap';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
@@ -91,6 +92,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const [sidebar, setSidebar] = usePref('reader.sidebar', SIDEBAR, window.innerWidth >= 1024 ? 'open' : 'closed');
   const [finding, setFinding] = useState(false);
   const [chrome, setChrome] = useState(true);
+  const [rotation, setRotation] = useState(0);
   const compact = useMediaQuery('(max-width: 767px)');
   const pages = pdf.numPages;
   const getViewer = useCallback(() => viewerRef.current, []); // stable: effects keyed on it must not re-run per render
@@ -113,6 +115,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
       });
       v.eventBus.on('pagechanging', (e: { pageNumber: number }) => setPage(e.pageNumber));
       v.eventBus.on('scalechanging', (e: { scale: number; presetValue?: string }) => setScale({ value: e.scale, preset: e.presetValue }));
+      v.eventBus.on('rotationchanging', (e: { pagesRotation: number }) => setRotation(e.pagesRotation));
       viewerRef.current = v;
       setReady(true);
     });
@@ -340,6 +343,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
           <div ref={container} tabIndex={0} aria-label={row.title} className="reader-scroll outline-none">
             <div className="pdfViewer" />
           </div>
+          <Overlays ready={ready} getViewer={getViewer} container={container} pdf={pdf} documentId={row.id} docHash={row.contentHash} rotation={rotation} />
         </div>
       </div>
       {compact && (

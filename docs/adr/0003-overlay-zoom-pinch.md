@@ -42,6 +42,13 @@
   2× zoom over 1.2 s): CSS transform **60 fps at 1× and 4× CPU throttle** ✅; per-move `updateScale`
   60 fps at 1×, **46–48 fps (p95 frame 33 ms) at 4×**.
 
+In-app re-check (T-202, `e2e/overlay.spec.ts`): highlight rect vs the black calibration box's rendered
+pixels ≤ 2 px on desktop Chromium at rotations 0–270 and 200 %. In Pixel 7 emulation (DPR **2.625**) the canvas
+ink sits 2.3–3.2 px right of PDF.js's CSS layout (left +2.3, right +3.2, top/bottom +0.4): PDF.js floors the
+canvas buffer to a divisor of the fractional output scale. The overlay matches PDF.js's coordinate system
+exactly (same as the text layer), so native selection shows the same offset on such devices. Real-device QA
+decides whether it is visible; if so, position the overlay against the canvas element box instead.
+
 ## Gate status
 
 - Drift ≤ 1 CSS px: met at p95 in Chromium; WebKit desktop exceeds it at high zoom by ≤ 3.5 px.

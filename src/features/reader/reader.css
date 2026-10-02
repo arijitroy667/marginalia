@@ -42,3 +42,57 @@
   padding-top: calc(3rem + env(safe-area-inset-top));
   padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
 }
+
+/* Overlay hosts (T-202, PRD §8.4): above the canvas, never drawn into it, so theme/zoom never touch them. */
+.mg-under,
+.mg-over {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.mg-under {
+  z-index: 0; /* same as .textLayer, placed before it in DOM order */
+  /* the host is the stacking context, so it must carry the blend to reach the canvas below:
+     multiply keeps black text black under a light highlight; dark themes use normal + alpha (tokens) */
+  mix-blend-mode: var(--hl-blend, multiply);
+}
+.mg-over {
+  z-index: 3;
+}
+.mg-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.mg-hl {
+  fill-opacity: var(--hl-alpha, 1);
+}
+.mg-hover {
+  fill: var(--accent);
+  fill-opacity: 0.08;
+}
+.mg-selected {
+  fill: var(--accent);
+  fill-opacity: 0.16;
+  stroke: var(--accent);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+/* Gutter: a lane inset at the page's right edge (in the page margin), markers stack horizontally. */
+.mg-gutter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 28px;
+}
+.mg-marker {
+  position: absolute;
+  right: 2px;
+  display: flex;
+  gap: 2px;
+  transform: translateY(-50%);
+  pointer-events: auto;
+}
