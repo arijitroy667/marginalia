@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Generate the Appendix B fixture corpus with line ground truth known by construction.
 
-Usage:  python fixtures/generate.py [--large]
+Usage:  python fixtures/generate.py [--large] [--force]   (existing files are kept unless --force:
+        fixture bytes must stay stable because tests key documents by SHA-256)
 Needs:  PyMuPDF >= 1.24 (pip install pymupdf)
 Writes: fixtures/pdfs/*.pdf and fixtures/pdfs/truth/*.json
 
@@ -21,6 +22,12 @@ ROOT = Path(__file__).parent
 OUT = ROOT / "pdfs"
 TRUTH = OUT / "truth"
 ASC = 0.8
+FORCE = "--force" in sys.argv
+
+
+def fresh(name):
+    """True if `name` should be (re)generated."""
+    return FORCE or not (OUT / name).exists()
 
 WORDS = """the of and to in is that for it as was with be by on not he this are or his from at
 which but have an they you were her she there would their we him been has when who will more if
@@ -185,6 +192,8 @@ class Fixture:
 
 # ---------------------------------------------------------------------------------------------
 def f01_prose():
+    if not fresh("01-single-column-prose.pdf"):
+        return
     f = Fixture("01-single-column-prose.pdf", "single", "6x9in book, justified Times 11/14.5, hyphenation")
     c = Corpus(1)
     W, H, L, R = 432, 648, 54, 54
@@ -224,6 +233,8 @@ def f01_prose():
 
 
 def two_column(name, W, H, M, gutter, fs, lead, title_fs, note):
+    if not fresh(name):
+        return
     f = Fixture(name, "two-column", note)
     c = Corpus(2 if "ieee" in name else 3)
     colw = (W - 2 * M - gutter) / 2
@@ -305,6 +316,8 @@ def two_column(name, W, H, M, gutter, fs, lead, title_fs, note):
 
 
 def f03_textbook():
+    if not fresh("03-textbook-sidebar-footnotes.pdf"):
+        return
     f = Fixture("03-textbook-sidebar-footnotes.pdf", "two-column", "main column + boxed sidebar + footnotes")
     c = Corpus(4)
     W, H = 612, 792
@@ -351,6 +364,8 @@ def f03_textbook():
 
 
 def f04_slides():
+    if not fresh("04-slides-16x9.pdf"):
+        return
     f = Fixture("04-slides-16x9.pdf", "other", "16:9 deck: large text, bullets, images, dark slide")
     c = Corpus(5)
     W, H = 960, 540
@@ -408,6 +423,8 @@ def f04_slides():
 
 
 def f05_tables():
+    if not fresh("05-tables.pdf"):
+        return
     f = Fixture("05-tables.pdf", "other", "grid tables; truth = one line per table row (ADR 0001)")
     c = Corpus(6)
     W, H = 595, 842
@@ -446,6 +463,8 @@ def f05_tables():
 
 
 def f06_math():
+    if not fresh("06-math.pdf"):
+        return
     f = Fixture("06-math.pdf", "single", "inline super/subscripts, numbered display equations, a fraction")
     c = Corpus(8)
     W, H = 595, 842
@@ -493,6 +512,8 @@ def f06_math():
 
 
 def f07_code():
+    if not fresh("07-code.pdf"):
+        return
     f = Fixture("07-code.pdf", "single", "monospace listings, indentation, line numbers")
     W, H = 595, 842
     code = '''export function buildPageLines(page, items, size, cfg = {}) {
@@ -549,6 +570,8 @@ def render_page_image(src_pdf, pno, dpi=110):
 
 
 def f08_scanned():
+    if not fresh("08-scanned-no-text.pdf"):
+        return
     f = Fixture("08-scanned-no-text.pdf", "scanned", "image-only pages: expect hasTextLayer=false")
     for pno in range(2):
         pix, rect = render_page_image(OUT / "01-single-column-prose.pdf", pno)
@@ -559,6 +582,8 @@ def f08_scanned():
 
 
 def f09_ocr():
+    if not fresh("09-scanned-hidden-ocr.pdf"):
+        return
     f = Fixture("09-scanned-hidden-ocr.pdf", "single", "page image + invisible OCR text offset by (+1.5, -1) pt")
     src = json.loads((TRUTH / "01-single-column-prose.json").read_text(encoding="utf-8"))
     pix, rect = render_page_image(OUT / "01-single-column-prose.pdf", 2)
@@ -574,6 +599,8 @@ def f09_ocr():
 
 
 def f10_rotated():
+    if not fresh("10-rotated-mixed.pdf"):
+        return
     f = Fixture("10-rotated-mixed.pdf", "single", "/Rotate 90/180/270 with upright text + a vertical margin stamp")
     c = Corpus(12)
     for rot in (90, 0, 180, 270):
@@ -594,6 +621,8 @@ def f10_rotated():
 
 
 def f11_scripts():
+    if not fresh("11-devanagari-cjk.pdf"):
+        return
     f = Fixture("11-devanagari-cjk.pdf", "nonlatin", "no-crash guarantee; lines unscored")
     p = f.page(595, 842)
     html = """
@@ -611,6 +640,8 @@ def f11_scripts():
 
 
 def f12_large():
+    if not fresh("12-large-500p.pdf"):
+        return
     print("  generating 12-large-500p.pdf (slow) ...")
     doc = fitz.open()
     c = Corpus(13)
@@ -630,7 +661,35 @@ def f12_large():
     print(f"  12-large-500p.pdf: {(OUT / '12-large-500p.pdf').stat().st_size / 1e6:.1f} MB")
 
 
+def f15_geometry():
+    if not fresh("15-geometry-calibration.pdf"):
+        return
+    """Calibration for overlay drift (S3/T-201): black boxes at known spots on rotated/landscape pages.
+    Truth: per box the canonical rect (normalised, displayed at user rotation 0) and PDF user-space rect."""
+    doc = fitz.open()
+    pages = []
+    for (w, h, rot) in ((612, 792, 0), (792, 612, 0), (612, 792, 90), (595, 842, 270)):
+        p = doc.new_page(width=w, height=h)
+        p.set_rotation(rot)
+        W, H = p.rect.width, p.rect.height  # displayed
+        boxes = []
+        for (fx, fy, fw, fh) in ((0.08, 0.06, 0.20, 0.05), (0.62, 0.12, 0.30, 0.10), (0.30, 0.55, 0.12, 0.30),
+                                 (0.70, 0.86, 0.22, 0.08)):
+            disp = fitz.Rect(fx * W, fy * H, (fx + fw) * W, (fy + fh) * H)
+            unrot = disp * p.derotation_matrix
+            p.draw_rect(unrot, color=None, fill=(0, 0, 0))
+            mb = p.mediabox
+            boxes.append({"canonical": [fx, fy, fw, fh],
+                          "user": [unrot.x0 + mb.x0, mb.y1 - unrot.y1, unrot.x1 + mb.x0, mb.y1 - unrot.y0]})
+        pages.append({"page": p.number + 1, "rotate": rot, "boxes": boxes})
+    doc.save(OUT / "15-geometry-calibration.pdf")
+    (TRUTH / "15-geometry-calibration.boxes.json").write_text(json.dumps({"pages": pages}, indent=1), encoding="utf-8")
+    print("  15-geometry-calibration.pdf: 4 pages x 4 boxes")
+
+
 def f13_password():
+    if not fresh("13-password.pdf"):
+        return
     doc = fitz.open()
     for k in range(2):
         p = doc.new_page(width=595, height=842)
@@ -642,6 +701,8 @@ def f13_password():
 
 
 def f14_corrupt():
+    if not fresh("14-corrupt-truncated.pdf"):
+        return
     data = (OUT / "01-single-column-prose.pdf").read_bytes()
     (OUT / "14-corrupt-truncated.pdf").write_bytes(data[: int(len(data) * 0.35)])
     (OUT / "14b-not-a-pdf.pdf").write_bytes(random.Random(15).randbytes(4096))
@@ -664,5 +725,6 @@ if __name__ == "__main__":
     f11_scripts()
     f13_password()
     f14_corrupt()
+    f15_geometry()
     if "--large" in sys.argv:
         f12_large()

@@ -159,7 +159,7 @@ Each row is independently testable. "AC" = acceptance criteria. Test each AC wit
 
 | ID | Pri | Requirement | AC |
 |---|---|---|---|
-| FR-RDR-01 | P0 | Continuous vertical scroll, virtualised. | Only visible pages ±1 hold a rendered canvas (NFR-PERF-04). |
+| FR-RDR-01 | P0 | Continuous vertical scroll, virtualised. | Rendered canvases are limited to PDF.js's page-view LRU (`max(10, 2·visible+1)`), each capped by `maxCanvasPixels` (NFR-PERF-04, ADR 0003). |
 | FR-RDR-02 | P0 | Page navigation: page-number input, prev/next, Home/End, PgUp/PgDn, scrubber on mobile. | `G` focuses page input. Invalid input is ignored with feedback. |
 | FR-RDR-03 | P0 | Zoom: fit-width (default), fit-page, 50 to 400 %, `Ctrl/Cmd+wheel`, `Ctrl/Cmd +/-/0`, pinch on touch. | Pinch uses CSS transform during gesture and re-renders on release; no canvas exceeds NFR-PERF-04. Zoom is device-local (not synced). |
 | FR-RDR-04 | P0 | Thumbnails sidebar. | Lazy; current page highlighted; click jumps. |
@@ -296,7 +296,7 @@ Numeric targets are **initial budgets**: measure in the spikes, then tighten or 
 | NFR-PERF-01 | Open | Cached 300-page / 20 MB text PDF: first page visible < 1.5 s on desktop, < 3 s on a mid-range Android phone. |
 | NFR-PERF-02 | Scroll | 60 fps desktop, ≥ 45 fps mobile while scrolling a 300-page text PDF. |
 | NFR-PERF-03 | Annotation | Input to visible annotation < 100 ms (optimistic IndexedDB write; network never on the critical path). |
-| NFR-PERF-04 | Memory | Rendered canvases only for visible pages ±1. Each canvas ≤ **16,777,216 px** (iOS Safari canvas area ceiling); device-pixel-ratio capped at 2 on mobile, 3 on desktop; release off-screen canvases by setting `width = height = 0` (Safari does not free backing stores otherwise). Target: peak JS heap + canvases < 300 MB on a 500-page PDF on a phone. |
+| NFR-PERF-04 | Memory | Rendered canvases only within PDF.js's page-view LRU (`max(10, 2·visible+1)`; ADR 0003). Each canvas ≤ **16,777,216 px** (iOS Safari canvas area ceiling); device-pixel-ratio capped at 2 on mobile, 3 on desktop; release off-screen canvases by setting `width = height = 0` (Safari does not free backing stores otherwise). Target: peak JS heap + canvases < 300 MB on a 500-page PDF on a phone. |
 | NFR-PERF-05 | Theme | Theme switch updates visible pages < 300 ms; CSS-strategy switch is effectively instant. |
 | NFR-PERF-06 | Benchmark | In M4, run a stopwatch protocol (20 trials each): "add a note to a given line" in Marginalia vs Acrobat vs one competitor. Record in `docs/benchmarks.md`. Marginalia must be ≥ 2x faster median, or the core thesis (H1) is not met and the PRD is revisited. |
 | NFR-PERF-07 | Line Engine | Median < 30 ms per 3,000-character page on desktop, < 80 ms on a mid-range phone. v1 runs on the main thread in idle-time chunks; move to a Web Worker if p95 > 50 ms. Results cached per `(content_hash, page, engine_version)`. |

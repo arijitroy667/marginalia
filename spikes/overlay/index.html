@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>S3 overlay + pinch harness</title>
+<link rel="stylesheet" href="/node_modules/pdfjs-dist/web/pdf_viewer.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: #555; }
+  #container { position: absolute; inset: 0; overflow: auto; touch-action: pan-x pan-y; overscroll-behavior: contain; }
+  .mg-overlay { position: absolute; inset: 0; pointer-events: none; }
+  .mg-overlay div { position: absolute; outline: 1px solid rgb(255 0 0 / 0); }
+</style>
+</head>
+<body>
+<div id="container"><div class="pdfViewer"></div></div>
+<script type="module">
+  import * as pdfjsLib from '/node_modules/pdfjs-dist/build/pdf.mjs';
+  globalThis.pdfjsLib = pdfjsLib;
+  const { PDFViewer, EventBus, PDFLinkService } = await import('/node_modules/pdfjs-dist/web/pdf_viewer.mjs');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/node_modules/pdfjs-dist/build/pdf.worker.mjs';
+
+  // ---- geometry (spike copy of core/anchors/geometry.ts): canonical <-> displayed, normalised, CW rotation
+  function fromCanonical(r, rot) {
+    switch (((rot % 360) + 360) % 360) {
+      case 90: return { x: 1 - r.y - r.h, y: r.x, w: r.h, h: r.w };
+      case 180: return { x: 1 - r.x - r.w, y: 1 - r.y - r.h, w: r.w, h: r.h };
+      case 270: return { x: r.y, y: 1 - r.x - r.w, w: r.h, h: r.w };
+      default: return { ...r };
+    }
+  }
+
+  const container = document.getElementById('container');
+  let doc, viewer, eventBus, boxes = {};
+
+  function rendered(n) {
+    return new Promise((resolve) => {
+      const on = (e) => { if (e.pageNumber === n) { eventBus.off('pagerendered', on); resolve(); } };
+      eventBus.on('pagerendered', on);
+    });
+  }
+  const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  function drawOverlay(pv) {
+    const rects = boxes[pv.id];
+    if (!rects) return;
+    pv.div.querySelector('.mg-overlay')?.remove();
+    const layer = document.createElement('div');
+    layer.className = 'mg-overlay';
+    rects.forEach((b, k) => {
+      const d = fromCanonical({ x: b.canonical[0], y: b.canonical[1], w: b.canonical[2], h: b.canonical[3] }, viewer.pagesRotation);
+      const el = document.createElement('div');
+      el.dataset.k = k;
+      Object.assign(el.style, { left: `${d.x * 100}%`, top: `${d.y * 100}%`, width: `${d.w * 100}%`, height: `${d.h * 100}%` });
+      layer.append(el);
+    });
+    pv.div.append(layer);
+  }
+
+  // ---- pinch implementations
+  let pinch = null; // { mode, d0, mid, f, acc, prev }
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const mid = (t) => [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2];
+  let pinchMode = 'css';
+  container.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 2) return;
+    const m = mid(e.touches);
+    pinch = { d0: dist(e.touches), prev: dist(e.touches), mid: m, f: 1, acc: 1 };
+    if (pinchMode === 'css') {
+      const v = viewer.viewer, r = v.getBoundingClientRect();
+      v.style.transformOrigin = `${m[0] - r.left}px ${m[1] - r.top}px`;
+      v.style.willChange = 'transform';
+    }
+  }, { passive: false });
+  container.addEventListener('touchmove', (e) => {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    const d = dist(e.touches);
+    if (pinchMode === 'css') {
+      pinch.f = d / pinch.d0; // compositor-only during the gesture
+      viewer.viewer.style.transform = `scale(${pinch.f})`;
+    } else {
+      pinch.acc *= d / pinch.prev; // PDF.js rounds scale to 0.01: accumulate small factors
+      if (Math.abs(pinch.acc - 1) >= 0.01) {
+        viewer.updateScale({ scaleFactor: pinch.acc, origin: mid(e.touches), drawingDelay: 400 });
+        pinch.acc = 1;
+      }
+    }
+    pinch.prev = d;
+  }, { passive: false });
+  container.addEventListener('touchend', (e) => {
+    if (!pinch || e.touches.length >= 2) return;
+    if (pinchMode === 'css') {
+      viewer.viewer.style.transform = '';
+      viewer.viewer.style.willChange = '';
+      viewer.updateScale({ scaleFactor: pinch.f, origin: pinch.mid });
+    }
+    pinch = null;
+  });
+
+  window.api = {
+    async load(file, boxesUrl) {
+      doc = await pdfjsLib.getDocument({ url: file, isEvalSupported: false, cMapUrl: '/node_modules/pdfjs-dist/cmaps/', cMapPacked: true, standardFontDataUrl: '/node_modules/pdfjs-dist/standard_fonts/' }).promise;
+      boxes = {};
+      if (boxesUrl) for (const p of (await (await fetch(boxesUrl)).json()).pages) boxes[p.page] = p.boxes;
+      viewer?.setDocument(null);
+      container.innerHTML = '<div class="pdfViewer"></div>';
+      eventBus = new EventBus();
+      const linkService = new PDFLinkService({ eventBus });
+      viewer = new PDFViewer({ container, eventBus, linkService, maxCanvasPixels: 16777216, maxCanvasDim: 32767 });
+      linkService.setViewer(viewer);
+      eventBus.on('pagerendered', (e) => drawOverlay(viewer.getPageView(e.pageNumber - 1)));
+      eventBus.on('rotationchanging', () => { for (let i = 0; i < viewer.pagesCount; i++) drawOverlay(viewer.getPageView(i)); });
+      viewer.setDocument(doc);
+      linkService.setDocument(doc);
+      await rendered(1);
+      return doc.numPages;
+    },
+    async view(n, scale, rotation) {
+      viewer.pagesRotation = rotation;
+      viewer.currentScale = scale;
+      const pv = viewer.getPageView(n - 1);
+      const r = rendered(n);
+      viewer.scrollPageIntoView({ pageNumber: n });
+      await Promise.race([r, new Promise((res) => setTimeout(res, 4000))]);
+      await frames();
+      drawOverlay(pv);
+      await frames();
+    },
+    /** drift between our overlay and PDF.js's own viewport math, in CSS px */
+    mathDrift(n) {
+      const pv = viewer.getPageView(n - 1);
+      const wrap = pv.div.querySelector('.canvasWrapper').getBoundingClientRect();
+      const sx = wrap.width / pv.viewport.width, sy = wrap.height / pv.viewport.height;
+      return boxes[n].map((b, k) => {
+        const [x1, y1] = pv.viewport.convertToViewportPoint(b.user[0], b.user[1]);
+        const [x2, y2] = pv.viewport.convertToViewportPoint(b.user[2], b.user[3]);
+        const exp = { l: wrap.left + Math.min(x1, x2) * sx, t: wrap.top + Math.min(y1, y2) * sy, r: wrap.left + Math.max(x1, x2) * sx, b: wrap.top + Math.max(y1, y2) * sy };
+        const a = pv.div.querySelector(`.mg-overlay [data-k="${k}"]`).getBoundingClientRect();
+        return Math.max(Math.abs(a.left - exp.l), Math.abs(a.top - exp.t), Math.abs(a.right - exp.r), Math.abs(a.bottom - exp.b));
+      });
+    },
+    overlayRect(n, k) {
+      const el = viewer.getPageView(n - 1).div.querySelector(`.mg-overlay [data-k="${k}"]`);
+      el.scrollIntoView({ block: 'center', inline: 'center' });
+      const a = el.getBoundingClientRect();
+      return { x: a.left, y: a.top, w: a.width, h: a.height };
+    },
+    /** dark-box edges inside a PNG with sub-pixel precision: per-column/row ink coverage (0..1) */
+    async darkBox(b64) {
+      const bmp = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+      const c = Object.assign(document.createElement('canvas'), { width: bmp.width, height: bmp.height }), ctx = c.getContext('2d');
+      ctx.drawImage(bmp, 0, 0);
+      const { data } = ctx.getImageData(0, 0, bmp.width, bmp.height);
+      const W = bmp.width, H = bmp.height, ink = (x, y) => 1 - (data[(y * W + x) * 4] + data[(y * W + x) * 4 + 1] + data[(y * W + x) * 4 + 2]) / 765;
+      const col = Array.from({ length: W }, (_, x) => { let s = 0; for (let y = 0; y < H; y++) s += ink(x, y); return s; });
+      const row = Array.from({ length: H }, (_, y) => { let s = 0; for (let x = 0; x < W; x++) s += ink(x, y); return s; });
+      const edges = (v) => {
+        const full = Math.max(...v), cov = v.map((t) => Math.min(1, t / full));
+        const i0 = cov.findIndex((t) => t > 0.02), i1 = cov.length - 1 - [...cov].reverse().findIndex((t) => t > 0.02);
+        return [i0 + 1 - cov[i0], i1 + cov[i1]];
+      };
+      const [x0, x1] = edges(col), [y0, y1] = edges(row);
+      return { x0, y0, x1, y1 };
+    },
+    canvases() {
+      return [...document.querySelectorAll('canvas')].filter((c) => c.width * c.height > 0).map((c) => c.width * c.height);
+    },
+    async pinchTest(mode, factor, ms = 1200) {
+      pinchMode = mode;
+      const r = container.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const T = (id, x, y) => new Touch({ identifier: id, target: container, clientX: x, clientY: y });
+      const fire = (type, d) => {
+        const ts = d === null ? [] : [T(0, cx - d / 2, cy), T(1, cx + d / 2, cy)];
+        container.dispatchEvent(new TouchEvent(type, { touches: ts, targetTouches: ts, changedTouches: ts.length ? ts : [T(0, cx, cy)], bubbles: true, cancelable: true }));
+      };
+      const d0 = 200;
+      fire('touchstart', d0);
+      const times = [];
+      const t0 = performance.now();
+      await new Promise((done) => {
+        const step = (t) => {
+          times.push(t);
+          const p = Math.min(1, (t - t0) / ms);
+          fire('touchmove', d0 * (1 + (factor - 1) * p));
+          if (p < 1) requestAnimationFrame(step); else done();
+        };
+        requestAnimationFrame(step);
+      });
+      fire('touchend', null);
+      await new Promise((res) => setTimeout(res, 600));
+      const iv = times.slice(1).map((t, i) => t - times[i]).sort((a, b) => a - b);
+      return { fps: +(1000 / (iv.reduce((s, v) => s + v, 0) / iv.length)).toFixed(1), p95: +iv[Math.floor(iv.length * 0.95)].toFixed(1), frames: iv.length, scale: viewer.currentScale };
+    },
+  };
+  window.ready = true;
+</script>
+</body>
+</html>

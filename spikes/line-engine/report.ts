@@ -68,7 +68,7 @@ const latencies: { ms: number; chars: number }[] = [];
 const failures: string[] = [];
 const misses: string[] = [];
 
-const truthFiles = readdirSync(join(PDFS, 'truth')).filter((f) => f.endsWith('.json'));
+const truthFiles = readdirSync(join(PDFS, 'truth')).filter((f) => f.endsWith('.json') && !f.endsWith('.boxes.json'));
 for (const tf of truthFiles) {
   const truth = JSON.parse(readFileSync(join(PDFS, 'truth', tf), 'utf8')) as Truth;
   let pages;
