@@ -1,0 +1,319 @@
+{
+ "fixture": "05-tables.pdf",
+ "layout": "other",
+ "note": "grid tables; truth = one line per table row (ADR 0001)",
+ "pages": [
+  {
+   "page": 1,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Quarterly Reading Report",
+     "rect": [
+      0.09412,
+      0.06793,
+      0.32723,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "As concentration should is, its good go up first at must way may but over. Letter your at off garden made",
+     "rect": [
+      0.09412,
+      0.10926,
+      0.81176,
+      0.01188
+     ],
+     "score": true
+    },
+    {
+     "text": "each we year interpretation acknowledgement most come there another circumstances how men.",
+     "rect": [
+      0.09412,
+      0.1247,
+      0.72392,
+      0.01188
+     ],
+     "score": true
+    },
+    {
+     "text": "Region Q1 Q2 Q3 Q4",
+     "rect": [
+      0.10084,
+      0.1639,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "West Plains 35,113 18,258 24,498 88,789",
+     "rect": [
+      0.10084,
+      0.18646,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "North Plains 66,000 60,880 79,359 10,692",
+     "rect": [
+      0.10084,
+      0.20903,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "East Coast 95,545 49,778 22,305 92,306",
+     "rect": [
+      0.10084,
+      0.23159,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "West Valley 20,698 22,176 31,296 6,828",
+     "rect": [
+      0.10084,
+      0.25416,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "North Hills 66,457 77,488 8,400 90,335",
+     "rect": [
+      0.10084,
+      0.27672,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "West Coast 38,265 26,964 88,473 29,499",
+     "rect": [
+      0.10084,
+      0.29929,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "West Coast 35,061 27,610 52,075 36,955",
+     "rect": [
+      0.10084,
+      0.32185,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "East Coast 26,246 93,003 790 53,995",
+     "rect": [
+      0.10084,
+      0.34442,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "North Valley 64,549 18,337 3,177 31,129",
+     "rect": [
+      0.10084,
+      0.36698,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "West Coast 78,329 607 15,990 75,951",
+     "rect": [
+      0.10084,
+      0.38955,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "South Hills 43,382 1,181 11,044 17,556",
+     "rect": [
+      0.10084,
+      0.41211,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "Central Coast 65,741 11,219 75,201 65,208",
+     "rect": [
+      0.10084,
+      0.43468,
+      0.79496,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "Table 2: Notes by reader",
+     "rect": [
+      0.09412,
+      0.49192,
+      0.21473,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "Ines No development way last old good make any never because life will 102",
+     "rect": [
+      0.10084,
+      0.52138,
+      0.75072,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "because.",
+     "rect": [
+      0.26891,
+      0.53682,
+      0.0682,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "Olu Development down while not when to off being down been these. 36",
+     "rect": [
+      0.10084,
+      0.56176,
+      0.74138,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "Olu Responsibility from first get is we what, men men now note 99",
+     "rect": [
+      0.10084,
+      0.5867,
+      0.74138,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "transformation, our it communication.",
+     "rect": [
+      0.26891,
+      0.60214,
+      0.27647,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "Ada International back who were their know there recommendation said 359",
+     "rect": [
+      0.10084,
+      0.62708,
+      0.75072,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "has.",
+     "rect": [
+      0.26891,
+      0.64252,
+      0.03176,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "Ines Also three line many off, how come their came should said, more 75",
+     "rect": [
+      0.10084,
+      0.66746,
+      0.74138,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "their.",
+     "rect": [
+      0.26891,
+      0.6829,
+      0.03736,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "Ravi Reading man or not men you out understanding world our some 312",
+     "rect": [
+      0.10084,
+      0.70784,
+      0.75072,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    },
+    {
+     "text": "against them to before which.",
+     "rect": [
+      0.26891,
+      0.72328,
+      0.21953,
+      0.01188
+     ],
+     "score": true,
+     "tag": "table"
+    }
+   ]
+  }
+ ]
+}

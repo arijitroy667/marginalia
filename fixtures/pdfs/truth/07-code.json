@@ -1,0 +1,433 @@
+{
+ "fixture": "07-code.pdf",
+ "layout": "single",
+ "note": "monospace listings, indentation, line numbers",
+ "pages": [
+  {
+   "page": 1,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Listing 1: the engine entry point",
+     "rect": [
+      0.09412,
+      0.07268,
+      0.28044,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "export function buildPageLines(page, items, size, cfg = {}) {",
+     "rect": [
+      0.10084,
+      0.11021,
+      0.55361,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "const c = { ...LINE_ENGINE_CONFIG, ...cfg };",
+     "rect": [
+      0.11899,
+      0.12447,
+      0.39933,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "const geo = items.filter((it) => it.str.trim() !== \"\");",
+     "rect": [
+      0.11899,
+      0.13872,
+      0.49916,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "if (geo.length === 0) {",
+     "rect": [
+      0.11899,
+      0.15297,
+      0.20874,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "return { engineVersion: ENGINE_VERSION, page, lines: [], text: \"\", hasTextLayer: false };",
+     "rect": [
+      0.13714,
+      0.16722,
+      0.80773,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "}",
+     "rect": [
+      0.11899,
+      0.18147,
+      0.00908,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "// Regions: recursive XY-cut, vertical cuts first so columns keep their reading order.",
+     "rect": [
+      0.11899,
+      0.20998,
+      0.7805,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "const leaves = xyCut(geo, medianFontSize(geo), c);",
+     "rect": [
+      0.11899,
+      0.22423,
+      0.45378,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "const lines = [];",
+     "rect": [
+      0.11899,
+      0.23848,
+      0.15429,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "for (const [region, leaf] of leaves.entries()) {",
+     "rect": [
+      0.11899,
+      0.25273,
+      0.43563,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "for (const group of groupByBaseline(leaf, c)) {",
+     "rect": [
+      0.13714,
+      0.26698,
+      0.42655,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "lines.push(makeLine(page, region, group, c));",
+     "rect": [
+      0.15529,
+      0.28124,
+      0.4084,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "}",
+     "rect": [
+      0.13714,
+      0.29549,
+      0.00908,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "}",
+     "rect": [
+      0.11899,
+      0.30974,
+      0.00908,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "return finish(page, lines, c);",
+     "rect": [
+      0.11899,
+      0.32399,
+      0.27227,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "}",
+     "rect": [
+      0.10084,
+      0.33824,
+      0.00908,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "Life quiet great said even against was how who come particularly time both evening old man. Over in the by",
+     "rect": [
+      0.09412,
+      0.38622,
+      0.81176,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "how reading my made state her have extraordinary out what. People letter have responsibility do,",
+     "rect": [
+      0.09412,
+      0.40285,
+      0.81176,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "acknowledgement just consideration? Day their so made, two who used those letter particularly?",
+     "rect": [
+      0.09412,
+      0.41948,
+      0.71421,
+      0.01306
+     ],
+     "score": true
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Listing 2: the engine entry point",
+     "rect": [
+      0.09412,
+      0.07268,
+      0.28044,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "1 export function buildPageLines(page, items, size, cfg = {}) {",
+     "rect": [
+      0.10218,
+      0.11021,
+      0.58588,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "2 const c = { ...LINE_ENGINE_CONFIG, ...cfg };",
+     "rect": [
+      0.10218,
+      0.12447,
+      0.44975,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "3 const geo = items.filter((it) => it.str.trim() !== \"\");",
+     "rect": [
+      0.10218,
+      0.13872,
+      0.54958,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "4 if (geo.length === 0) {",
+     "rect": [
+      0.10218,
+      0.15297,
+      0.25916,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "5 return { engineVersion: ENGINE_VERSION, page, lines: [], text: \"\", hasTextLayer: false };",
+     "rect": [
+      0.10218,
+      0.16722,
+      0.8763,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "6 }",
+     "rect": [
+      0.10218,
+      0.18147,
+      0.0595,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "7",
+     "rect": [
+      0.10218,
+      0.19667,
+      0.00807,
+      0.0095
+     ],
+     "score": true
+    },
+    {
+     "text": "8 // Regions: recursive XY-cut, vertical cuts first so columns keep their reading order.",
+     "rect": [
+      0.10218,
+      0.20998,
+      0.83092,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "9 const leaves = xyCut(geo, medianFontSize(geo), c);",
+     "rect": [
+      0.10218,
+      0.22423,
+      0.5042,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "10 const lines = [];",
+     "rect": [
+      0.09412,
+      0.23848,
+      0.21277,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "11 for (const [region, leaf] of leaves.entries()) {",
+     "rect": [
+      0.09412,
+      0.25273,
+      0.49412,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "12 for (const group of groupByBaseline(leaf, c)) {",
+     "rect": [
+      0.09412,
+      0.26698,
+      0.50319,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "13 lines.push(makeLine(page, region, group, c));",
+     "rect": [
+      0.09412,
+      0.28124,
+      0.50319,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "14 }",
+     "rect": [
+      0.09412,
+      0.29549,
+      0.08571,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "15 }",
+     "rect": [
+      0.09412,
+      0.30974,
+      0.06756,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "16 return finish(page, lines, c);",
+     "rect": [
+      0.09412,
+      0.32399,
+      0.33076,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "17 }",
+     "rect": [
+      0.09412,
+      0.33824,
+      0.04941,
+      0.01069
+     ],
+     "score": true
+    },
+    {
+     "text": "Where and day, between window the been down than international acknowledgement at? Take by might too",
+     "rect": [
+      0.09412,
+      0.38622,
+      0.81176,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "river garden for from do way. Own understanding still international an only now communication. Here day",
+     "rect": [
+      0.09412,
+      0.40285,
+      0.81176,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "more right what, only of back and two way.",
+     "rect": [
+      0.09412,
+      0.41948,
+      0.32347,
+      0.01306
+     ],
+     "score": true
+    }
+   ]
+  }
+ ]
+}

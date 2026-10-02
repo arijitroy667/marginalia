@@ -1,0 +1,385 @@
+{
+ "fixture": "09-scanned-hidden-ocr.pdf",
+ "layout": "single",
+ "note": "page image + invisible OCR text offset by (+1.5, -1) pt",
+ "pages": [
+  {
+   "page": 1,
+   "width": 432.0,
+   "height": 648.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "THE LINE AND THE PAGE",
+     "rect": [
+      0.38368,
+      0.06484,
+      0.24707,
+      0.01347
+     ],
+     "score": true
+    },
+    {
+     "text": "little be over, of their might him or us go go men under your.",
+     "rect": [
+      0.12847,
+      0.12417,
+      0.65362,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "In never by while their, us line made page acknowledgement are did",
+     "rect": [
+      0.17014,
+      0.14655,
+      0.74427,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "interpretation other may same to. Year up get day these organization con-",
+     "rect": [
+      0.12847,
+      0.16892,
+      0.80746,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "sideration recommendation day. Three get quiet down men came at your",
+     "rect": [
+      0.12847,
+      0.1913,
+      0.79506,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "their with line no never organization. Come used life used year made into",
+     "rect": [
+      0.12847,
+      0.21367,
+      0.7978,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "when back each.",
+     "rect": [
+      0.12847,
+      0.23605,
+      0.18539,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "Development those how long evening international evening those.",
+     "rect": [
+      0.17014,
+      0.25843,
+      0.72097,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "For he right also an life state might too still. Can when an here should",
+     "rect": [
+      0.12847,
+      0.2808,
+      0.758,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "such those long even those over another when against also know three.",
+     "rect": [
+      0.12847,
+      0.30318,
+      0.78552,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "Not for way state our after just no characteristic only also man of which",
+     "rect": [
+      0.12847,
+      0.32556,
+      0.77305,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "when out, him many year than?",
+     "rect": [
+      0.12847,
+      0.34793,
+      0.34467,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "At being him we where just, come its. Old they you before margin",
+     "rect": [
+      0.17014,
+      0.37031,
+      0.71264,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "day him where. Organization time here men, by off circumstances such",
+     "rect": [
+      0.12847,
+      0.39269,
+      0.77715,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "could should back. See in has being day circumstances came but people",
+     "rect": [
+      0.12847,
+      0.41506,
+      0.79647,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "came time year, also this down much its evening. Never on no men",
+     "rect": [
+      0.12847,
+      0.43744,
+      0.73461,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "colour did how good three never only he know. Long line go to any he",
+     "rect": [
+      0.12847,
+      0.45982,
+      0.76082,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "like, communication last, reading have letter page long while.",
+     "rect": [
+      0.12847,
+      0.48219,
+      0.66597,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "Characteristic reading their two communication understanding like",
+     "rect": [
+      0.17014,
+      0.50457,
+      0.72084,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "world this it still. Extraordinary can when year never the first over than",
+     "rect": [
+      0.12847,
+      0.52695,
+      0.76067,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "each each that know. River own make, that him not own about never first",
+     "rect": [
+      0.12847,
+      0.54932,
+      0.79644,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "they, when against that but here but from each. This particularly much,",
+     "rect": [
+      0.12847,
+      0.5717,
+      0.77035,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "against your if much two some can most did quiet.",
+     "rect": [
+      0.12847,
+      0.59408,
+      0.54788,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "Them long you made over long this organization both take window,",
+     "rect": [
+      0.17014,
+      0.61645,
+      0.73191,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "between you. Men consideration even you up their that for under since",
+     "rect": [
+      0.12847,
+      0.63883,
+      0.7704,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "and he responsibility margin communication and much go. Evening last",
+     "rect": [
+      0.12847,
+      0.66121,
+      0.77856,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "he it, good came with, even me is, any year will than.",
+     "rect": [
+      0.12847,
+      0.68358,
+      0.57809,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "They little he might great own colour work little reading they",
+     "rect": [
+      0.17014,
+      0.70596,
+      0.64947,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "window years circumstances know extraordinary some? Last our",
+     "rect": [
+      0.12847,
+      0.72834,
+      0.70708,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "reading, recommendation only his should get being an, reading particula-",
+     "rect": [
+      0.12847,
+      0.75071,
+      0.79783,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "rly communication transformation never through acknowledgement other",
+     "rect": [
+      0.12847,
+      0.77309,
+      0.79227,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "on? Letter because us work that circumstances own came might no good.",
+     "rect": [
+      0.12847,
+      0.79546,
+      0.80605,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "Come is are those quiet in day has on but life on come than men also.",
+     "rect": [
+      0.12847,
+      0.81784,
+      0.76489,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "Because acknowledgement out were never some come will me we",
+     "rect": [
+      0.17014,
+      0.84022,
+      0.72771,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "world it that. We take out he communication between go first an, both",
+     "rect": [
+      0.12847,
+      0.86259,
+      0.75664,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "after letter nevertheless over in men and. Take where was our good more,",
+     "rect": [
+      0.12847,
+      0.88497,
+      0.81016,
+      0.01647
+     ],
+     "score": true
+    },
+    {
+     "text": "3",
+     "rect": [
+      0.49826,
+      0.94138,
+      0.01124,
+      0.01347
+     ],
+     "score": true
+    }
+   ]
+  }
+ ]
+}

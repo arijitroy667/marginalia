@@ -1,0 +1,14 @@
+{
+ "fixture": "11-devanagari-cjk.pdf",
+ "layout": "nonlatin",
+ "note": "no-crash guarantee; lines unscored",
+ "pages": [
+  {
+   "page": 1,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": []
+  }
+ ]
+}

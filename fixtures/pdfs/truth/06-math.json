@@ -1,0 +1,747 @@
+{
+ "fixture": "06-math.pdf",
+ "layout": "single",
+ "note": "inline super/subscripts, numbered display equations, a fraction",
+ "pages": [
+  {
+   "page": 1,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "There with organization might for here page little, organization any under each do. Garden",
+     "rect": [
+      0.1479,
+      0.08456,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "particularly up note colour our still window after know its your us might came these man.",
+     "rect": [
+      0.12101,
+      0.10238,
+      0.66342,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.11876,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (1)",
+     "rect": [
+      0.44886,
+      0.14679,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "a + b",
+     "rect": [
+      0.46639,
+      0.17458,
+      0.03655,
+      0.01188
+     ],
+     "score": false,
+     "tag": "fraction"
+    },
+    {
+     "text": "2c",
+     "rect": [
+      0.48655,
+      0.19359,
+      0.01587,
+      0.01188
+     ],
+     "score": false,
+     "tag": "fraction"
+    },
+    {
+     "text": "Each if some reading very consideration but development? Letter understanding back page me",
+     "rect": [
+      0.1479,
+      0.22114,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "well, concentration, it note through, work about while when they get men which being.",
+     "rect": [
+      0.12101,
+      0.23895,
+      0.64338,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.25534,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (2)",
+     "rect": [
+      0.44886,
+      0.28337,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "Year of man did little man circumstances down did your man they down. Way its come his this",
+     "rect": [
+      0.1479,
+      0.31853,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "my were, now now, might good these might two river its they those.",
+     "rect": [
+      0.12101,
+      0.33634,
+      0.50478,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.35273,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (3)",
+     "rect": [
+      0.44886,
+      0.38076,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "Particularly from well or as also your he were where who those he only interpretation its by",
+     "rect": [
+      0.1479,
+      0.41591,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "interpretation? Long our see should another come any under. Off their under people characteristic",
+     "rect": [
+      0.12101,
+      0.43373,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "man for him to interpretation there world note they last characteristic your also never could.",
+     "rect": [
+      0.12101,
+      0.45154,
+      0.67928,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.46793,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (4)",
+     "rect": [
+      0.44886,
+      0.49596,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "Is our do man while at men note they window. At made too its to international for in margin made",
+     "rect": [
+      0.1479,
+      0.53112,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "international which the but about make. Same will how made year is than them?",
+     "rect": [
+      0.12101,
+      0.54893,
+      0.59357,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.56532,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (5)",
+     "rect": [
+      0.44886,
+      0.59335,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "Time from might right both well more only through will only river through reading are page could",
+     "rect": [
+      0.1479,
+      0.6285,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "how after. Note no work right organization or characteristic after, letter another now not life?",
+     "rect": [
+      0.12101,
+      0.64632,
+      0.68899,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.66271,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (6)",
+     "rect": [
+      0.44886,
+      0.69074,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "Us if man too long me your on garden? What he over nevertheless she same could men each",
+     "rect": [
+      0.1479,
+      0.72589,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "characteristic off page development down they?",
+     "rect": [
+      0.12101,
+      0.74371,
+      0.35475,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.7601,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (7)",
+     "rect": [
+      0.44886,
+      0.78812,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "Very are could now has year acknowledgement well interpretation, three very me, because",
+     "rect": [
+      0.1479,
+      0.82328,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "evening when who, know came men or. Out came by by have two way much.",
+     "rect": [
+      0.12101,
+      0.84109,
+      0.57453,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.85748,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (8)",
+     "rect": [
+      0.44886,
+      0.88551,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width": 595.0,
+   "height": 842.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Make understanding state last on your come did, even my in man. Do even their work new came",
+     "rect": [
+      0.1479,
+      0.08456,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "from page the back were the.",
+     "rect": [
+      0.12101,
+      0.10238,
+      0.21458,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.11876,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (11)",
+     "rect": [
+      0.44886,
+      0.14679,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "a + b",
+     "rect": [
+      0.46639,
+      0.17458,
+      0.03655,
+      0.01188
+     ],
+     "score": false,
+     "tag": "fraction"
+    },
+    {
+     "text": "2c",
+     "rect": [
+      0.48655,
+      0.19359,
+      0.01587,
+      0.01188
+     ],
+     "score": false,
+     "tag": "fraction"
+    },
+    {
+     "text": "Be must only take into man old world but come while letter since its three very first last",
+     "rect": [
+      0.1479,
+      0.22114,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "transformation people. Man concentration development great were would be, years now page?",
+     "rect": [
+      0.12101,
+      0.23895,
+      0.69875,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.25534,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (12)",
+     "rect": [
+      0.44886,
+      0.28337,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "On life right any this acknowledgement come long most now the particularly new his. Might both",
+     "rect": [
+      0.1479,
+      0.31853,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "time organization be see first were after? Nevertheless many our the are since be it they can long at",
+     "rect": [
+      0.12101,
+      0.33634,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "after when get first.",
+     "rect": [
+      0.12101,
+      0.35416,
+      0.14477,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.37055,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (13)",
+     "rect": [
+      0.44886,
+      0.39857,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "Out two most very who, here, their get now are said good? Old those also back interpretation said",
+     "rect": [
+      0.1479,
+      0.43373,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "me concentration their work.",
+     "rect": [
+      0.12101,
+      0.45154,
+      0.21358,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.46793,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (14)",
+     "rect": [
+      0.44886,
+      0.49596,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "Make will his, at responsibility than make while years state too year is should his she. Life",
+     "rect": [
+      0.1479,
+      0.53112,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "particularly with said each three there was right into another will him river just take. Interpretation no",
+     "rect": [
+      0.12101,
+      0.54893,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "margin of against concentration like to you no made.",
+     "rect": [
+      0.12101,
+      0.56675,
+      0.39075,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.58314,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (15)",
+     "rect": [
+      0.44886,
+      0.61116,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "We consideration men some did be against it this no about since two only? Circumstances only",
+     "rect": [
+      0.1479,
+      0.64632,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "any their who his then people could line down. Been out to new most consideration that day each after",
+     "rect": [
+      0.12101,
+      0.66413,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "own day of been me off letter over since.",
+     "rect": [
+      0.12101,
+      0.68195,
+      0.30342,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.69834,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (16)",
+     "rect": [
+      0.44886,
+      0.72637,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "Who what for as being my said transformation man did are. Them there both at both this with her",
+     "rect": [
+      0.1479,
+      0.76152,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "that both margin life other an three quiet, this might still.",
+     "rect": [
+      0.12101,
+      0.77933,
+      0.42007,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "where x2 + yi2 = r2 holds for every ak in the set.",
+     "rect": [
+      0.12101,
+      0.79572,
+      0.34716,
+      0.01663
+     ],
+     "score": true
+    },
+    {
+     "text": "E = mc2 + pn (17)",
+     "rect": [
+      0.44886,
+      0.82375,
+      0.43013,
+      0.019
+     ],
+     "score": true
+    },
+    {
+     "text": "Should since back you was he for three responsibility come how great way not right came. Never",
+     "rect": [
+      0.1479,
+      0.85891,
+      0.73109,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "they same nevertheless between recommendation them last it, at come your, into him garden at. Then",
+     "rect": [
+      0.12101,
+      0.87672,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "line and through came see any characteristic world organization the nevertheless them there while",
+     "rect": [
+      0.12101,
+      0.89454,
+      0.75798,
+      0.01306
+     ],
+     "score": true
+    },
+    {
+     "text": "back about the many me?",
+     "rect": [
+      0.12101,
+      0.91235,
+      0.18894,
+      0.01306
+     ],
+     "score": true
+    }
+   ]
+  }
+ ]
+}

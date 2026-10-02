@@ -1,0 +1,21 @@
+{
+ "fixture": "08-scanned-no-text.pdf",
+ "layout": "scanned",
+ "note": "image-only pages: expect hasTextLayer=false",
+ "pages": [
+  {
+   "page": 1,
+   "width": 432.0,
+   "height": 648.0,
+   "hasText": false,
+   "lines": []
+  },
+  {
+   "page": 2,
+   "width": 432.0,
+   "height": 648.0,
+   "hasText": false,
+   "lines": []
+  }
+ ]
+}

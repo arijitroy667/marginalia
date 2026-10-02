@@ -413,6 +413,7 @@ export interface NRect { x: number; y: number; w: number; h: number } // 0..1, c
 export interface RawTextItem {
   str: string;
   rect: NRect;        // already normalised by the adapter
+  baseline: number;   // normalised y of the baseline (ADR 0001)
   fontSize: number;   // in canonical page units (e.g. 1/72 in), for gap thresholds
   vertical: boolean;  // true if not horizontal text
   hasEOL: boolean;
@@ -424,6 +425,7 @@ export interface Line {
   region: number;     // XY-cut leaf / column id
   text: string;
   rect: NRect;        // union of item rects
+  band: NRect;        // highlight geometry (step 7), precomputed because it needs neighbours (ADR 0001)
   pitch: number;      // distance to next baseline in the same region (normalised); used for hit tolerance
   items: { itemIndex: number; charStart: number; charEnd: number; rect: NRect }[];
   hyphenated: boolean; // ends with a soft line-break hyphen
@@ -438,20 +440,21 @@ export interface PageLines {
   hasTextLayer: boolean;
 }
 
-export function buildPageLines(page: number, items: RawTextItem[], cfg?: Partial<LineEngineConfig>): PageLines;
+// size = canonical page width/height in page units (thresholds are in ems, rects are normalised; ADR 0001)
+export function buildPageLines(page: number, items: RawTextItem[], size: { width: number; height: number }, cfg?: Partial<LineEngineConfig>): PageLines;
 export function hitTest(pl: PageLines, nx: number, ny: number): Line | null; // snaps within pitch/2
 export function neighborLine(pl: PageLines, line: Line, dir: 1 | -1): Line | null;
 ```
 
-**Algorithm** (initial values in `LINE_ENGINE_CONFIG`; tune against the corpus in S1):
+**Algorithm** (values in `LINE_ENGINE_CONFIG`, tuned in S1 — see `docs/adr/0001-line-engine.md`):
 
 1. Drop empty/whitespace-only items for geometry (keep for offset bookkeeping). Items with non-horizontal direction become single-item lines.
-2. **Regions**: recursive **XY-cut** over item rects. Cut along a horizontal gap ≥ `yCutGap` × median font size, then a vertical gap ≥ `xCutGap` × median font size (default 1.5), recursively, until no valid cut remains. Leaves are columns/blocks; order = top-to-bottom, then left-to-right inside a band. This handles two-column papers, sidebars and full-width titles.
+2. **Regions**: recursive **XY-cut** over item rects. At each node, first try a **column** cut along vertical gaps ≥ `xCutGap` × median font size (1.0), valid only when the node spans ≥ 2 text rows and yields ≥ 2 *wide* segments (≥ `minColWidth` = 4 em); narrow segments (bullets, line numbers, table cells) join their nearest wide neighbour, so tables read as rows. Otherwise cut once at the **widest** horizontal gap ≥ `yCutGap` × median font size (1.0) and recurse. Leaves are columns/blocks; order = left-to-right for column cuts, top-to-bottom for band cuts. Column-first prevents a band cut through aligned paragraph gaps from interleaving two columns. This handles two-column papers, sidebars and full-width titles.
 3. **Lines inside a leaf**: sort by baseline y, then x. An item joins the current line if `|baseline − lineBaseline| ≤ baselineTol × lineFontSize` **or** vertical overlap ratio ≥ 0.5 (superscripts, subscripts, inline math).
 4. **Text join**: items sorted by x; insert a space when the gap > `wordGap` × font size (default 0.15), else concatenate.
 5. **Hyphenation**: if a line ends in `-` and the next line in the region starts with a lowercase letter, set `hyphenated = true`; `textNorm` removes the hyphen and newline.
 6. **Rect, pitch**: line rect = union of item rects; `pitch` = baseline distance to the next line in the region (fallback: 1.2 × font size).
-7. **Highlight geometry helper** `lineHighlightRect(line)`: height = 1.15 × font size centred on the text body, clamped to the midpoint between neighbouring baselines so adjacent highlights never overlap and show no visible gap.
+7. **Highlight geometry** `line.band`: height = 1.15 × font size centred on the text body, clamped to the midpoint between neighbouring baselines so adjacent highlights never overlap and show no visible gap.
 8. **Scanned pages**: if there are no non-empty items, return `hasTextLayer: false` (FR-LIN-06).
 9. `hitTest` is `O(log n)` (binary search by y within regions, then x), tolerant within `pitch / 2`.
 

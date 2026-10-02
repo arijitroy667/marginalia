@@ -1,0 +1,377 @@
+{
+ "fixture": "04-slides-16x9.pdf",
+ "layout": "other",
+ "note": "16:9 deck: large text, bullets, images, dark slide",
+ "pages": [
+  {
+   "page": 1,
+   "width": 960.0,
+   "height": 540.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Reading Lines, Not Pages",
+     "rect": [
+      0.21856,
+      0.36074,
+      0.56288,
+      0.08148
+     ],
+     "score": true
+    },
+    {
+     "text": "A tour of the line engine",
+     "rect": [
+      0.36798,
+      0.49222,
+      0.26405,
+      0.04444
+     ],
+     "score": true
+    },
+    {
+     "text": "Marginalia design review",
+     "rect": [
+      0.04167,
+      0.92667,
+      0.13754,
+      0.02222
+     ],
+     "score": true
+    }
+   ]
+  },
+  {
+   "page": 2,
+   "width": 960.0,
+   "height": 540.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Why lines matter",
+     "rect": [
+      0.0625,
+      0.11333,
+      0.30007,
+      0.06667
+     ],
+     "score": true
+    },
+    {
+     "text": "• Your come extraordinary two who being each page can so those are",
+     "rect": [
+      0.07292,
+      0.26074,
+      0.76912,
+      0.04444
+     ],
+     "score": true
+    },
+    {
+     "text": "work the of?",
+     "rect": [
+      0.07987,
+      0.3237,
+      0.13617,
+      0.04444
+     ],
+     "score": true
+    },
+    {
+     "text": "• Circumstances been before, letter river, through characteristic day, said",
+     "rect": [
+      0.07292,
+      0.40889,
+      0.80377,
+      0.04444
+     ],
+     "score": true
+    },
+    {
+     "text": "out?",
+     "rect": [
+      0.07987,
+      0.47185,
+      0.04865,
+      0.04444
+     ],
+     "score": true
+    },
+    {
+     "text": "• And so its these both much may they down as which.",
+     "rect": [
+      0.07292,
+      0.55704,
+      0.60097,
+      0.04444
+     ],
+     "score": true
+    },
+    {
+     "text": "• His made will his since it river may make it?",
+     "rect": [
+      0.07292,
+      0.64222,
+      0.49522,
+      0.04444
+     ],
+     "score": true
+    }
+   ]
+  },
+  {
+   "page": 3,
+   "width": 960.0,
+   "height": 540.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Figure: a photograph that must not be inverted",
+     "rect": [
+      0.52083,
+      0.69852,
+      0.34278,
+      0.02963
+     ],
+     "score": true
+    },
+    {
+     "text": "Images stay natural",
+     "rect": [
+      0.0625,
+      0.11333,
+      0.35014,
+      0.06667
+     ],
+     "score": true
+    },
+    {
+     "text": "Has circumstances here if here also over",
+     "rect": [
+      0.0625,
+      0.26667,
+      0.37744,
+      0.03704
+     ],
+     "score": true
+    },
+    {
+     "text": "been since while. Your it well such first man",
+     "rect": [
+      0.0625,
+      0.31852,
+      0.40292,
+      0.03704
+     ],
+     "score": true
+    },
+    {
+     "text": "back note under may now last your years",
+     "rect": [
+      0.0625,
+      0.37037,
+      0.37979,
+      0.03704
+     ],
+     "score": true
+    },
+    {
+     "text": "state no get must, come its.",
+     "rect": [
+      0.0625,
+      0.42222,
+      0.25475,
+      0.03704
+     ],
+     "score": true
+    }
+   ]
+  },
+  {
+   "page": 4,
+   "width": 960.0,
+   "height": 540.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Trade-offs",
+     "rect": [
+      0.0625,
+      0.11333,
+      0.18334,
+      0.06667
+     ],
+     "score": true
+    },
+    {
+     "text": "Pros",
+     "rect": [
+      0.0625,
+      0.23926,
+      0.06021,
+      0.04815
+     ],
+     "score": true
+    },
+    {
+     "text": "• So so was other their.",
+     "rect": [
+      0.0625,
+      0.34074,
+      0.21248,
+      0.03704
+     ],
+     "score": true
+    },
+    {
+     "text": "• As where are could.",
+     "rect": [
+      0.0625,
+      0.41481,
+      0.1951,
+      0.03704
+     ],
+     "score": true
+    },
+    {
+     "text": "• Such were right.",
+     "rect": [
+      0.0625,
+      0.48889,
+      0.16152,
+      0.03704
+     ],
+     "score": true
+    },
+    {
+     "text": "• Even came note.",
+     "rect": [
+      0.0625,
+      0.56296,
+      0.16733,
+      0.03704
+     ],
+     "score": true
+    },
+    {
+     "text": "Cons",
+     "rect": [
+      0.53125,
+      0.23926,
+      0.06771,
+      0.04815
+     ],
+     "score": true
+    },
+    {
+     "text": "• Make reading down who?",
+     "rect": [
+      0.53125,
+      0.34074,
+      0.24837,
+      0.03704
+     ],
+     "score": true
+    },
+    {
+     "text": "• Its garden the many go?",
+     "rect": [
+      0.53125,
+      0.41481,
+      0.23567,
+      0.03704
+     ],
+     "score": true
+    },
+    {
+     "text": "• Other never each who.",
+     "rect": [
+      0.53125,
+      0.48889,
+      0.22175,
+      0.03704
+     ],
+     "score": true
+    },
+    {
+     "text": "• While is most our that?",
+     "rect": [
+      0.53125,
+      0.56296,
+      0.22287,
+      0.03704
+     ],
+     "score": true
+    }
+   ]
+  },
+  {
+   "page": 5,
+   "width": 960.0,
+   "height": 540.0,
+   "hasText": true,
+   "lines": [
+    {
+     "text": "Pipeline",
+     "rect": [
+      0.0625,
+      0.11333,
+      0.14381,
+      0.06667
+     ],
+     "score": true
+    },
+    {
+     "text": "PDF bytes",
+     "rect": [
+      0.09165,
+      0.46593,
+      0.08752,
+      0.03333
+     ],
+     "score": true
+    },
+    {
+     "text": "Text items",
+     "rect": [
+      0.27447,
+      0.46593,
+      0.08647,
+      0.03333
+     ],
+     "score": true
+    },
+    {
+     "text": "Regions",
+     "rect": [
+      0.46561,
+      0.46593,
+      0.06877,
+      0.03333
+     ],
+     "score": true
+    },
+    {
+     "text": "Lines",
+     "rect": [
+      0.65989,
+      0.46593,
+      0.04481,
+      0.03333
+     ],
+     "score": true
+    },
+    {
+     "text": "Anchors",
+     "rect": [
+      0.8302,
+      0.46593,
+      0.06877,
+      0.03333
+     ],
+     "score": true
+    }
+   ]
+  }
+ ]
+}
