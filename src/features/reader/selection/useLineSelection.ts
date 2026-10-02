@@ -3,7 +3,7 @@
  * Engine misses or failures never throw: they behave like a tap on blank space (FR-LIN-07).
  */
 import { useEffect, type RefObject } from 'react';
-import { anchorFromLine, anchorFromSelection } from '../../../core/anchors/anchor';
+import { anchorFromLine, anchorFromLines, anchorFromSelection } from '../../../core/anchors/anchor';
 import { fromCanonical, normalize, toCanonical } from '../../../core/anchors/geometry';
 import { hitTest, neighborLine, type Line, type PageLines } from '../../../core/line-engine';
 import { classifyPointer, groupLineRects, type PointerKind } from '../gestures/tap';
@@ -161,10 +161,10 @@ export function useNativeSelection(
   }, [ready, getViewer, container, pdf, docHash, lastPointer]);
 }
 
-/** Keeps the selected line inside the viewport with a 20 % margin (FR-LIN-03 auto-scroll). */
+/** Keeps the line cursor (the moving end of a range) inside the viewport with a 20 % margin (FR-LIN-03). */
 export function ensureVisible(v: PdfViewer, el: HTMLElement, sel: Selection): void {
   const pageEl = pageViewAt(v, sel.page - 1)?.div;
-  const r0 = sel.anchor.rects[0];
+  const r0 = sel.kind === 'line' ? sel.line.band : sel.anchor.rects[0];
   if (!pageEl || !r0) return;
   const box = pageEl.getBoundingClientRect();
   const d = fromCanonical(r0, v.pagesRotation);
@@ -189,4 +189,85 @@ export async function moveCursor(pdf: PDFDocumentProxy, docHash: string, dir: 1 
     if (npl && line) return lineSelection(npl, line);
   }
   return null;
+}
+
+/** Shift+arrow (FR-LIN-05): grow or shrink the line range from its fixed end, within the page (anchors are per page). */
+export async function extendCursor(pdf: PDFDocumentProxy, docHash: string, dir: 1 | -1): Promise<Selection | null> {
+  const cur = useReaderStore.getState().selection;
+  if (cur?.kind !== 'line') return null;
+  const pl = await getPageLines(pdf, docHash, cur.page);
+  const next = pl ? neighborLine(pl, cur.line, dir) : null;
+  if (!pl || !next) return null;
+  const from = cur.from ?? cur.line;
+  const lines = pl.lines.filter(
+    (l) => l.index >= Math.min(from.index, next.index) && l.index <= Math.max(from.index, next.index),
+  );
+  return {
+    kind: 'line',
+    page: pl.page,
+    line: next,
+    from,
+    anchor: anchorFromLines(pl, from, next),
+    text: lines.map((l) => l.text).join('\n'),
+  };
+}
+
+/**
+ * Pages without text (FR-LIN-08): a mouse/pen drag draws a rectangle that becomes a `region` selection with an
+ * empty quote, so the toolbar can highlight, note or bookmark it. Touch keeps scrolling (a drawing mode would need
+ * touch-action changes before the gesture starts). A click stays a tap for useLineTap.
+ */
+export function useRegionSelect(
+  ready: boolean,
+  getViewer: () => Viewer | null,
+  container: RefObject<HTMLDivElement | null>,
+) {
+  useEffect(() => {
+    const el = container.current;
+    const v = getViewer();
+    if (!ready || !el || !v) return;
+    let drag: { page: number; pageEl: HTMLElement; x: number; y: number } | null = null;
+    const at = (e: PointerEvent, pageEl: HTMLElement) => {
+      const r = pageEl.getBoundingClientRect();
+      return { x: clamp01((e.clientX - r.left) / r.width), y: clamp01((e.clientY - r.top) / r.height) };
+    };
+    const rect = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+      toCanonical(
+        { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) },
+        v.viewer.pagesRotation,
+      );
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'touch' || e.button !== 0) return;
+      const pageEl = (e.target as Element).closest<HTMLElement>('.page[data-page-number]');
+      if (!pageEl?.querySelector('.mg-banner')) return; // only pages flagged as having no text (FR-LIN-06)
+      drag = { page: Number(pageEl.dataset.pageNumber), pageEl, ...at(e, pageEl) };
+      e.preventDefault(); // no native image drag
+    };
+    const onMove = (e: PointerEvent) => {
+      if (drag) useReaderStore.getState().setRegion({ page: drag.page, rect: rect(drag, at(e, drag.pageEl)) });
+    };
+    const onUp = (e: PointerEvent) => {
+      const d = drag;
+      drag = null;
+      if (!d) return;
+      const store = useReaderStore.getState();
+      store.setRegion(null);
+      const r = rect(d, at(e, d.pageEl));
+      if (r.w < 0.01 || r.h < 0.005) return; // a click, not a rectangle
+      store.select({
+        kind: 'region',
+        page: d.page,
+        anchor: { v: 1, page: d.page, rects: [r], quote: { exact: '', prefix: '', suffix: '' } },
+        text: '',
+      });
+    };
+    el.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [ready, getViewer, container]);
 }

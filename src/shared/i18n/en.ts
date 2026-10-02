@@ -125,6 +125,7 @@ export const en = {
     filterAnnotations: 'Filter annotations',
     filterPlaceholder: 'Filter by text',
     filterByColour: 'Filter by colour',
+    showColour: (label: string) => `Show ${label} highlights in the document`,
     noNextBookmark: 'No bookmark after this point',
     noPrevBookmark: 'No bookmark before this point',
     pageShort: (n: number) => `p. ${n}`,
@@ -162,6 +163,8 @@ export const en = {
     actions: {
       lineDown: 'Next line (with a line selected)',
       lineUp: 'Previous line (with a line selected)',
+      extendDown: 'Extend the selection a line down',
+      extendUp: 'Extend the selection a line up',
       clear: 'Clear the selection, close a popover',
       highlight: 'Highlight with the active colour',
       colour: 'Apply colour N, or make it active',

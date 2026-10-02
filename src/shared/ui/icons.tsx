@@ -14,3 +14,5 @@ export const CheckIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M5 12l5 5L20 7
 export const CloseIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M6 6l12 12M18 6L6 18" {...p} />;
 export const BookmarkIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M6 3h12v18l-6-4.5L6 21z" {...p} />;
 export const NoteIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M4 5h16v11H9l-5 4z" {...p} />;
+export const EyeIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" {...p} />;
+export const EyeOffIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM3 3l18 18" {...p} />;

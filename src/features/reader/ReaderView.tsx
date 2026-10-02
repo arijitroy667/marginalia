@@ -21,7 +21,14 @@ import { SheetHandle } from './SheetHandle';
 import { applyColour, deleteOnSelection, LineActions, openNoteEditor, quickBookmark } from './LineActions';
 import { adjacentBookmark, jumpToAnchor, READING_INSET_PX, readingLine, scrollToPoint } from './navigation';
 import { Overlays } from './overlay/Overlays';
-import { ensureVisible, moveCursor, useLineTap, useNativeSelection } from './selection/useLineSelection';
+import {
+  ensureVisible,
+  extendCursor,
+  moveCursor,
+  useLineTap,
+  useNativeSelection,
+  useRegionSelect,
+} from './selection/useLineSelection';
 import { useReaderStore } from './store';
 import { usePinch } from './gestures/usePinch';
 import { usePageTheme } from './pageTheme';
@@ -185,6 +192,15 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
             ensureVisible(v, container.current, next);
           });
           return true;
+        case 'extendDown':
+        case 'extendUp':
+          if (sel?.kind !== 'line') return false; // with no cursor, Shift+arrows keep their default
+          void extendCursor(pdf, row.contentHash, action === 'extendDown' ? 1 : -1).then((next) => {
+            if (!next || !container.current) return;
+            useReaderStore.getState().select(next);
+            ensureVisible(v, container.current, next);
+          });
+          return true;
         case 'highlight':
           if (!sel) return false;
           void applyColour(row.id, active, palette, setActive);
@@ -311,6 +327,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const onBlankTap = useCallback(() => compactRef.current && setChrome((c) => !c), []); // phones: tap blank toggles chrome
   useLineTap(ready, getViewer, container, pdf, row.contentHash, onBlankTap, lastPointer);
   useNativeSelection(ready, getViewer, container, pdf, row.contentHash, lastPointer);
+  useRegionSelect(ready, getViewer, container);
   usePinch(ready, getViewer, container);
   usePageTheme(ready, getViewer, theme, invertImages);
   useAutoHideChrome(compact && ready, container, setChrome);

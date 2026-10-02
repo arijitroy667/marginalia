@@ -1,10 +1,13 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Popover } from 'radix-ui';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { NOTE_AUTOSAVE_MS } from '../../../config';
+import { intersects } from '../../../core/anchors/anchor';
 import { fromCanonical } from '../../../core/anchors/geometry';
 import type { Anchor } from '../../../core/anchors/types';
 import type { AnnotationRow } from '../../../core/db/models';
+import { annotationsRepo } from '../../../core/db/repos';
 import { en } from '../../../shared/i18n/en';
 import { isPrimaryChord } from '../../../shared/utils/keys';
 import { toast } from '../../../shared/ui/toast';
@@ -123,6 +126,14 @@ export function NotePopover({
   editor: { anchor: Anchor; rows: AnnotationRow[] };
 }) {
   const r = fromCanonical(editor.anchor.rects[0] ?? { x: 0, y: 0, w: 1, h: 0 }, rotation);
+  // a note on a highlighted line takes its colour as an accent (FR-NOT-06)
+  const tint = useLiveQuery(
+    async () =>
+      (await annotationsRepo.onPage(documentId, editor.anchor.page)).find(
+        (a) => a.kind === 'highlight' && intersects(a.anchor, editor.anchor),
+      )?.colorId ?? null,
+    [documentId, editor.anchor],
+  );
   return (
     <Popover.Root open onOpenChange={(open) => !open && close()}>
       {createPortal(
@@ -143,7 +154,10 @@ export function NotePopover({
           onKeyDown={(e) => e.key === 'Escape' && close()} // also when a newer toast is Radix's top layer and takes the Esc
         >
           {editor.anchor.quote.exact && (
-            <blockquote className="line-clamp-2 border-l-2 border-line pl-2 text-sm text-muted">
+            <blockquote
+              className="line-clamp-2 border-l-4 border-line pl-2 text-sm text-muted"
+              style={tint ? { borderLeftColor: `var(--hl-${tint})` } : undefined}
+            >
               {editor.anchor.quote.exact}
             </blockquote>
           )}

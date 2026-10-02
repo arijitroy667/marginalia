@@ -42,6 +42,8 @@ export function Overlays({ ready, getViewer, container, pdf, documentId, docHash
   const flash = useReaderStore((s) => s.flash);
   const resume = useReaderStore((s) => s.resume);
   const notes = useReaderStore((s) => s.notes);
+  const region = useReaderStore((s) => s.region);
+  const hidden = useReaderStore((s) => s.hidden);
   const { gutterStyle } = useSettings();
   const [textless, setTextless] = useState<ReadonlySet<number>>(new Set());
   const annotations = useLiveQuery(() => annotationsRepo.ofDocument(documentId), [documentId]);
@@ -75,10 +77,11 @@ export function Overlays({ ready, getViewer, container, pdf, documentId, docHash
       const noted = new Set(
         highlights.filter((h) => pageNotes.some((n) => intersects(h.anchor, n.anchor))).map((h) => h.id),
       );
-      out.set(page, { highlights, noted, markers });
+      // colours hidden in the document still tint notes and show in the panel (FR-HLT-06)
+      out.set(page, { highlights: highlights.filter((h) => !hidden.includes(h.colorId ?? 0)), noted, markers });
     }
     return out;
-  }, [annotations, gutterStyle]);
+  }, [annotations, gutterStyle, hidden]);
 
   // pages without a text layer get a banner and no line features (FR-LIN-06)
   useEffect(() => {
@@ -106,7 +109,7 @@ export function Overlays({ ready, getViewer, container, pdf, documentId, docHash
             highlights={a?.highlights ?? []}
             noted={a?.noted}
             hover={hover?.page === page && focus?.page !== page ? hover.band : undefined}
-            selected={focus?.page === page ? focus.anchor.rects : undefined}
+            selected={region?.page === page ? [region.rect] : focus?.page === page ? focus.anchor.rects : undefined}
             flash={flash?.page === page ? flash : undefined}
             resume={resume?.anchor.page === page ? resume.anchor : undefined}
             markers={a?.markers}

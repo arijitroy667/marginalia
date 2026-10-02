@@ -46,21 +46,21 @@ test.describe('annotation panel (T-208, FR-PNL-01, FR-NOT-04)', () => {
     await page.getByRole('tab', { name: 'All' }).click();
     await panel(page)
       .getByRole('group', { name: 'Filter by colour' })
-      .getByRole('button', { name: 'Definition' })
+      .getByRole('button', { name: /^Definition/ })
       .click();
     await expect(items(page)).toHaveCount(1); // the green highlight; bookmarks have no colour
     await panel(page)
       .getByRole('group', { name: 'Filter by colour' })
-      .getByRole('button', { name: 'Key idea' })
+      .getByRole('button', { name: /^Key idea/ })
       .click();
     await expect(items(page)).toHaveCount(3); // + the yellow highlight and the note on its line
     await panel(page)
       .getByRole('group', { name: 'Filter by colour' })
-      .getByRole('button', { name: 'Definition' })
+      .getByRole('button', { name: /^Definition/ })
       .click();
     await panel(page)
       .getByRole('group', { name: 'Filter by colour' })
-      .getByRole('button', { name: 'Key idea' })
+      .getByRole('button', { name: /^Key idea/ })
       .click();
 
     await panel(page).getByRole('searchbox', { name: 'Filter annotations' }).fill('slowly');

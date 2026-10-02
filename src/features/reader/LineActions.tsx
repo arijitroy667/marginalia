@@ -36,7 +36,7 @@ export async function applyColour(
   try {
     const { op, command } = await toggleHighlight(documentId, sel.anchor, colorId);
     if (op !== 'removed') setActive(colorId);
-    if (sel.kind === 'range') clearSelection();
+    if (sel.kind !== 'line') clearSelection(); // ranges and regions are consumed
     if (op === 'removed') toast(en.reader.highlightRemoved, undoable(command));
     if (op === 'replaced')
       toast(
@@ -152,13 +152,15 @@ export function LineActions({ documentId, selection, palette, active, setActive,
       </button>
       {!compact && (
         <>
-          <button
-            onClick={() =>
-              void platform.copyText(selection.text).then((ok) => toast(ok ? en.reader.copied : en.reader.copyFailed))
-            }
-          >
-            {en.reader.copy}
-          </button>
+          {selection.text && (
+            <button
+              onClick={() =>
+                void platform.copyText(selection.text).then((ok) => toast(ok ? en.reader.copied : en.reader.copyFailed))
+              }
+            >
+              {en.reader.copy}
+            </button>
+          )}
           <button aria-label={en.reader.clearSelection} onClick={clearSelection}>
             ✕
           </button>

@@ -184,7 +184,7 @@ Each row is independently testable. "AC" = acceptance criteria. Test each AC wit
 | FR-LIN-05 | P1 | Extend selection by lines: `Shift+↑/↓`; touch drag handles. | Produces a multi-rect anchor. |
 | FR-LIN-06 | P0 | Pages without a text layer (scanned). | Page shows an unobtrusive banner "No selectable text on this page"; line features disabled on that page; bookmarks/resume still work at page level (rect = whole page). |
 | FR-LIN-07 | P0 | Engine failure fallback. | If hit-testing returns null, native selection still works; no exception reaches the user. |
-| FR-LIN-08 | P1 | Region highlight for scanned pages (rectangle drag). | Stored as an Anchor with empty quote. |
+| FR-LIN-08 | P1 | Region highlight for scanned pages (rectangle drag). | Stored as an Anchor with empty quote. Mouse/pen drag in v1; touch drawing deferred (ADR 0016). |
 
 ### 6.4 Highlights and palette (`FR-HLT`)
 
@@ -194,7 +194,7 @@ Each row is independently testable. "AC" = acceptance criteria. Test each AC wit
 | FR-HLT-02 | P0 | Default palette of 5 with meanings: Yellow "Key idea", Green "Definition", Blue "Look up", Pink "Disagree / doubt", Purple "Revisit". Up to 8 colours. | Labels ≤ 24 chars; hex editable; contrast of text under every highlight ≥ 4.5:1 in every theme, validated at edit time with a warning. |
 | FR-HLT-03 | P0 | Same colour on an already highlighted line removes it; a different colour replaces it. | Toast with Undo (FR-KEY-06). "Already highlighted" = a live highlight sharing a visual line with the selection (ADR 0011). |
 | FR-HLT-04 | P0 | Remove a highlight via toolbar, `Delete`/`Backspace`, or the panel. | Tombstoned for sync. |
-| FR-HLT-05 | P1 | Change colour of an existing highlight by clicking it. | Toolbar opens on the highlight. |
+| FR-HLT-05 | P1 | Change colour of an existing highlight by clicking it. | Toolbar opens on the highlight's line with its colour pressed; another swatch recolours it in place (ADR 0016). |
 | FR-HLT-06 | P1 | Show/hide highlights per colour meaning; counts per colour in the panel. | Toggle is device-local. |
 | FR-HLT-07 | P2 | Per-meaning underline style (solid/wavy/dashed) for colour-blind accessibility. | |
 

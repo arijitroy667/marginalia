@@ -22,7 +22,8 @@ describe('keymap router (FR-KEY-01/02)', () => {
   it('tells T from Shift+T and leaves Shift+arrows / Shift+digits alone', () => {
     expect(press('t')?.action).toBe('themeMenu');
     expect(press('T', { shiftKey: true })?.action).toBe('cycleTheme');
-    expect(press('ArrowDown', { shiftKey: true })).toBeNull(); // extend selection is P1 (FR-LIN-05)
+    expect(press('ArrowDown', { shiftKey: true })?.action).toBe('extendDown'); // FR-LIN-05
+    expect(press('J', { shiftKey: true })).toBeNull();
     expect(press('!', { shiftKey: true })).toBeNull();
   });
 

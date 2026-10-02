@@ -6,9 +6,11 @@ import type { Anchor } from '../../../core/anchors/types';
 import type { AnnotationKind, AnnotationRow } from '../../../core/db/models';
 import { annotationsRepo } from '../../../core/db/repos';
 import { en } from '../../../shared/i18n/en';
-import { BookmarkIcon, NoteIcon } from '../../../shared/ui/icons';
+import { BookmarkIcon, EyeIcon, EyeOffIcon, NoteIcon } from '../../../shared/ui/icons';
+import { Markdown } from '../../../shared/ui/Markdown';
 import { useSettings } from '../../settings/useSettings';
 import { inDocumentOrder } from '../navigation';
+import { useReaderStore } from '../store';
 
 type View = 'all' | AnnotationKind;
 const VIEWS: View[] = ['all', 'highlight', 'note', 'bookmark'];
@@ -28,6 +30,8 @@ export function Annotations({ documentId, onJump }: { documentId: string; onJump
   const [colours, setColours] = useState<ReadonlySet<number>>(new Set());
 
   const highlights = (rows ?? []).filter((a) => a.kind === 'highlight');
+  const hidden = useReaderStore((s) => s.hidden);
+  const toggleHidden = useReaderStore((s) => s.toggleHidden);
   // a note takes the colour of the highlight on its line; bookmarks have none
   const colourOf = (a: AnnotationRow) =>
     a.kind === 'note' ? (highlights.find((h) => intersects(h.anchor, a.anchor))?.colorId ?? null) : a.colorId;
@@ -60,10 +64,10 @@ export function Annotations({ documentId, onJump }: { documentId: string; onJump
             {items.map((a) => {
               const colour = palette.find((p) => p.id === colourOf(a));
               return (
-                <li key={a.id}>
+                <li key={a.id} className="rounded hover:bg-ui-bg">
                   <button
                     onClick={() => onJump(a.anchor)}
-                    className="flex w-full flex-col gap-1 rounded px-2 py-2 text-left hover:bg-ui-bg"
+                    className="flex w-full flex-col gap-1 px-2 pt-2 pb-1 text-left"
                   >
                     <span className="flex items-center gap-2 text-xs text-muted">
                       {colour ? (
@@ -87,12 +91,15 @@ export function Annotations({ documentId, onJump }: { documentId: string; onJump
                       !(a.kind === 'bookmark' && a.label && a.anchor.quote.exact.startsWith(a.label)) && (
                         <span className="line-clamp-2 text-sm text-ui-fg">{a.anchor.quote.exact}</span>
                       )}
-                    {a.kind === 'note' && (
-                      <span className="line-clamp-3 whitespace-pre-wrap border-l-2 border-line pl-2 text-sm text-ui-fg">
-                        {a.body}
-                      </span>
-                    )}
                   </button>
+                  {/* outside the button: note links must be clickable on their own (FR-NOT-05) */}
+                  {a.kind === 'note' && a.body && (
+                    <Markdown
+                      source={a.body}
+                      className="mx-2 mb-2 max-h-40 overflow-hidden border-l-4 border-line pl-2 text-sm text-ui-fg"
+                      style={colour ? { borderLeftColor: colour.hex } : undefined}
+                    />
+                  )}
                 </li>
               );
             })}
@@ -115,15 +122,29 @@ export function Annotations({ documentId, onJump }: { documentId: string; onJump
         />
         <div role="group" aria-label={en.reader.filterByColour} className="flex flex-wrap gap-1">
           {palette.map((p) => (
-            <button
+            <span
               key={p.id}
-              aria-pressed={colours.has(p.id)}
-              onClick={() => toggle(p.id)}
-              className="flex min-h-8 items-center gap-1 rounded-full border border-line px-2 text-xs text-ui-fg aria-pressed:border-accent aria-pressed:bg-ui-bg aria-pressed:font-medium"
+              className="flex items-center rounded-full border border-line has-[[aria-pressed=true]:first-child]:border-accent"
             >
-              <span className="size-3 rounded-full border border-black/30" style={{ background: p.hex }} />
-              {p.label}
-            </button>
+              <button
+                aria-pressed={colours.has(p.id)}
+                onClick={() => toggle(p.id)}
+                className="flex min-h-8 items-center gap-1 rounded-l-full pl-2 pr-1 text-xs text-ui-fg aria-pressed:bg-ui-bg aria-pressed:font-medium"
+              >
+                <span className="size-3 rounded-full border border-black/30" style={{ background: p.hex }} />
+                {p.label}
+                <span className="text-muted">{highlights.filter((h) => h.colorId === p.id).length}</span>
+              </button>
+              <button
+                aria-pressed={!hidden.includes(p.id)}
+                aria-label={en.reader.showColour(p.label)}
+                title={en.reader.showColour(p.label)}
+                onClick={() => toggleHidden(p.id)}
+                className="grid min-h-8 min-w-8 place-items-center rounded-r-full text-muted"
+              >
+                {hidden.includes(p.id) ? <EyeOffIcon width={14} height={14} /> : <EyeIcon width={14} height={14} />}
+              </button>
+            </span>
           ))}
         </div>
       </div>

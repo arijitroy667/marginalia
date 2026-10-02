@@ -7,6 +7,8 @@ import { canHandleSingleKey, isPrimaryChord, isTypingTarget, type KeyLike } from
 export type Action =
   | 'lineDown'
   | 'lineUp'
+  | 'extendDown'
+  | 'extendUp'
   | 'clear'
   | 'highlight'
   | 'colour'
@@ -49,6 +51,8 @@ const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 export const KEYMAP: readonly Binding[] = [
   { action: 'lineDown', keys: ['ArrowDown', 'j'], group: 'lines', shift: false },
   { action: 'lineUp', keys: ['ArrowUp', 'k'], group: 'lines', shift: false },
+  { action: 'extendDown', keys: ['ArrowDown'], group: 'lines', shift: true },
+  { action: 'extendUp', keys: ['ArrowUp'], group: 'lines', shift: true },
   { action: 'clear', keys: ['Escape'], group: 'lines' },
   { action: 'highlight', keys: ['h'], group: 'annotate' },
   { action: 'colour', keys: DIGITS, group: 'annotate', shift: false },
