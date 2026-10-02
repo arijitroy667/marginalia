@@ -63,6 +63,8 @@ export const en = {
     back: 'Library',
     loading: 'Opening…',
     toolbar: 'Reader toolbar',
+    bottomBar: 'Page controls',
+    scrubber: 'Go to page',
     prevPage: 'Previous page',
     nextPage: 'Next page',
     pageInput: 'Page number',

@@ -12,6 +12,7 @@ import { db } from '../../core/db/schema';
 import { platform } from '../../core/platform';
 import { pageViewAt, type PdfViewer, type Viewer } from './pdf/viewer';
 
+/** Default reading-slot inset below the scroller's top edge; overlay chrome adds its height (PRD §5). */
 export const READING_INSET_PX = 8;
 
 interface Point {
@@ -22,8 +23,8 @@ interface Point {
 }
 
 /** Canonical point under the reading slot, or null if no page is there. */
-export function readingPoint(v: PdfViewer, el: HTMLElement): Point | null {
-  const slot = el.getBoundingClientRect().top + READING_INSET_PX;
+export function readingPoint(v: PdfViewer, el: HTMLElement, inset = READING_INSET_PX): Point | null {
+  const slot = el.getBoundingClientRect().top + inset;
   const n = v.pagesCount;
   const rect = (i: number) => pageViewAt(v, i)?.div.getBoundingClientRect();
   // binary search for the first page whose bottom is at/below the slot: independent of PDF.js's
@@ -44,18 +45,18 @@ export function readingPoint(v: PdfViewer, el: HTMLElement): Point | null {
 }
 
 /** Scrolls so the canonical point (page, x, y) sits at the reading slot. */
-export function scrollToPoint(v: PdfViewer, el: HTMLElement, page: number, y: number, x = 0.5): void {
+export function scrollToPoint(v: PdfViewer, el: HTMLElement, page: number, y: number, x = 0.5, inset = READING_INSET_PX): void {
   const pv = pageViewAt(v, page - 1);
   if (!pv) return;
   const d = fromCanonical({ x, y, w: 0, h: 0 }, v.pagesRotation);
   const r = pv.div.getBoundingClientRect();
-  el.scrollTop += r.top - el.getBoundingClientRect().top + d.y * r.height - READING_INSET_PX;
+  el.scrollTop += r.top - el.getBoundingClientRect().top + d.y * r.height - inset;
 }
 
 const pageAnchor = (p: Point): Anchor => ({ v: 1, page: p.page, rects: [{ x: p.x, y: p.y, w: 0, h: 0 }], quote: { exact: '', prefix: '', suffix: '' } });
 const keyOf = (page: number, y: number) => `${page}:${y.toFixed(4)}`;
 
-export function useResume({ pagesReady, getViewer, container, documentId }: { pagesReady: boolean; getViewer: () => Viewer | null; container: RefObject<HTMLDivElement | null>; documentId: string }): void {
+export function useResume({ pagesReady, getViewer, getInset, container, documentId }: { pagesReady: boolean; getViewer: () => Viewer | null; getInset: () => number; container: RefObject<HTMLDivElement | null>; documentId: string }): void {
   useEffect(() => {
     const v = getViewer()?.viewer;
     const el = container.current;
@@ -75,7 +76,7 @@ export function useResume({ pagesReady, getViewer, container, documentId }: { pa
       );
     };
     const onScroll = () => {
-      latest = readingPoint(v, el) ?? latest;
+      latest = readingPoint(v, el, getInset()) ?? latest;
       clearTimeout(timer);
       timer = setTimeout(save, RESUME_SAVE_DEBOUNCE_MS); // 1 s of scroll idle
     };
@@ -83,10 +84,12 @@ export function useResume({ pagesReady, getViewer, container, documentId }: { pa
 
     el.addEventListener('scroll', onScroll, { passive: true }); // from the start: no early scroll goes unsaved
     void db.positions.get(documentId).then((pos) => {
-      if (cancelled || !pos) return;
+      if (cancelled) return;
+      // nothing saved: the very top (PDF.js scrolls page 1's edge to the scroller top, under overlay chrome)
+      if (!pos) return void requestAnimationFrame(() => !cancelled && (el.scrollTop = 0));
       const at = pos.anchor?.rects[0];
       saved = keyOf(pos.page, at?.y ?? 0);
-      requestAnimationFrame(() => !cancelled && scrollToPoint(v, el, pos.page, at?.y ?? 0, at?.x));
+      requestAnimationFrame(() => !cancelled && scrollToPoint(v, el, pos.page, at?.y ?? 0, at?.x, getInset()));
     });
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pagehide', save);
@@ -97,5 +100,5 @@ export function useResume({ pagesReady, getViewer, container, documentId }: { pa
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', save);
     };
-  }, [pagesReady, getViewer, container, documentId]);
+  }, [pagesReady, getViewer, getInset, container, documentId]);
 }

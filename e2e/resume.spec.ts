@@ -17,8 +17,10 @@ const scrollTo = (page: Page, n: number, frac: number) =>
   page.evaluate(
     ({ n, frac }) => {
       const el = document.querySelector<HTMLElement>('.reader-scroll')!;
+      const bar = document.querySelector<HTMLElement>('[role="toolbar"]')!.parentElement!;
+      const inset = getComputedStyle(bar).position === 'absolute' ? bar.offsetHeight + 8 : 8; // same rule as the app
       const r = document.querySelector(`.page[data-page-number="${n}"]`)!.getBoundingClientRect();
-      el.scrollTop += r.top - el.getBoundingClientRect().top + frac * r.height - 8;
+      el.scrollTop += r.top - el.getBoundingClientRect().top + frac * r.height - inset;
     },
     { n, frac },
   );
@@ -26,7 +28,9 @@ const scrollTo = (page: Page, n: number, frac: number) =>
 /** Which page / fraction is at the reading slot right now. */
 const slot = (page: Page) =>
   page.evaluate(() => {
-    const top = document.querySelector('.reader-scroll')!.getBoundingClientRect().top + 8;
+    const bar = document.querySelector<HTMLElement>('[role="toolbar"]')!.parentElement!;
+    const inset = getComputedStyle(bar).position === 'absolute' ? bar.offsetHeight + 8 : 8;
+    const top = document.querySelector('.reader-scroll')!.getBoundingClientRect().top + inset;
     for (const p of document.querySelectorAll<HTMLElement>('.page')) {
       const r = p.getBoundingClientRect();
       if (r.bottom >= top) return { page: Number(p.dataset.pageNumber), frac: (top - r.top) / r.height };
@@ -56,6 +60,12 @@ test.describe('page-level resume (T-110, FR-BKM-04)', () => {
     expect(pos!.deviceId).toMatch(/^[0-9a-f-]{36}$/);
     expect(pos!.deviceLabel).toBeTruthy();
 
+    const barOffScreen = await page.getByRole('toolbar', { name: 'Reader toolbar' }).evaluate((el) => el.getBoundingClientRect().bottom <= 1);
+    if (barOffScreen) {
+      // phones: chrome auto-hid on scroll; a tap on the page brings it back (without scrolling)
+      const box = (await reader(page).boundingBox())!;
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    }
     await page.getByRole('link', { name: 'Library' }).click();
     await expect(page.getByRole('link', { name: new RegExp(TITLE) })).toContainText(/5[89]% read/);
 

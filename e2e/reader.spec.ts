@@ -25,8 +25,11 @@ test.describe('reader shell (T-107, FR-RDR-01..03, FR-RDR-12)', () => {
 
     test('page navigation: buttons, page input, G, Home/End, PgUp/PgDn; invalid input ignored with feedback', async ({ page, isMobile }) => {
       await open(page, '01-single-column-prose.pdf', '01-single-column-prose');
-      await page.getByRole('button', { name: 'Next page' }).click();
-      await expect(pageInput(page)).toHaveValue('2');
+      if (!isMobile) {
+        // phones navigate with the page field and scrubber instead (PRD §10.3, mobile.spec.ts)
+        await page.getByRole('button', { name: 'Next page' }).click();
+        await expect(pageInput(page)).toHaveValue('2');
+      }
       await pageInput(page).fill('5');
       await pageInput(page).press('Enter');
       await expect(pageInput(page)).toHaveValue('5');

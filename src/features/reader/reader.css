@@ -32,3 +32,13 @@
 .reader-scroll .textLayer .highlight.selected {
   outline-width: 3px;
 }
+
+/* Touch: one-finger pans stay native; two-finger pinch is ours (usePinch), never the browser's page zoom. */
+.reader-scroll {
+  touch-action: pan-x pan-y;
+}
+/* Phones: chrome overlays the page; pad the first/last page clear of the bars (T-112, PRD §10.3). */
+.reader-compact .reader-scroll .pdfViewer {
+  padding-top: calc(3rem + env(safe-area-inset-top));
+  padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+}

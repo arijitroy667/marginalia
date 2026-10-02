@@ -1,5 +1,5 @@
 /**
- * Tap-vs-drag classification (FR-LIN-02, spike S4). Pure: fed pointer down/up samples.
+ * Tap-vs-drag classification (FR-LIN-02, ADR 0004). Pure: fed pointer down/up samples.
  * travel < 4 px (mouse/pen) or < 10 px (touch) AND duration < 300 ms => 'tap' (line select);
  * anything else is left to native text selection ('native'). A touch held >= 300 ms is a long-press
  * (native word selection), also 'native'.

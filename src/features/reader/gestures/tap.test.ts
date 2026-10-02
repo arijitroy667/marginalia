@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPointer, groupLineRects } from './gesture';
+import { classifyPointer, groupLineRects } from './tap';
 
 const at = (x: number, y: number, t: number) => ({ x, y, t });
 
