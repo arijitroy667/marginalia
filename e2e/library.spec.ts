@@ -1,7 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { docRow, seed } from './helpers';
 
-const titles = async (page: import('@playwright/test').Page) =>
+const titles = async (page: Page) =>
   page.getByRole('list', { name: 'Library' }).getByRole('link').evaluateAll((els) => els.map((e) => e.querySelector('p')?.textContent));
 
 test.describe('library screen (T-106, FR-LIB-04)', () => {
