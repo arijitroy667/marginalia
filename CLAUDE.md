@@ -25,7 +25,8 @@ A book-style PDF reader where the *line* is a first-class object: one-action hig
 ## Known gotchas
 - iOS Safari canvas ceiling is 16,777,216 px; cap DPR; free off-screen canvases with `width = height = 0`.
 - PDF.js needs `cmaps/` and `standard_fonts/` served from `public/pdfjs/` and precached for offline.
-- Set `isEvalSupported: false`; treat uploaded PDFs as untrusted input.
+- Treat uploaded PDFs as untrusted input (worker rendering, `enableXfa: false`; PDF.js 6 has no `isEvalSupported`/eval paths — ADR 0008).
+- Playwright WebKit on Windows cannot store Blobs in IndexedDB; PDF-storing E2E tests skip there (`noIdbBlobs`), Linux CI runs them.
 - Single-key shortcuts must not fire in text fields or during IME composition. No modifier-only chords.
 - Playwright WebKit is not iOS Safari; real-device checks are required at milestone exits.
 - iOS has no Background Sync: flush the outbox on foreground/online only.

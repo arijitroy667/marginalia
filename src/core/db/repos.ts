@@ -155,3 +155,29 @@ export const filesRepo = {
     return row?.blob;
   },
 };
+
+export const libraryRepo = {
+  /**
+   * Adds a document with its file and cover in one transaction. Re-checks the hash inside the transaction,
+   * so two concurrent adds of the same bytes yield one document (FR-LIB-02).
+   */
+  async addDocument(input: NewDocument, file: Blob, cover: Blob | null): Promise<{ document: DocumentRow; existing: boolean }> {
+    return db.transaction('rw', [db.documents, db.outbox, db.files, db.covers], async () => {
+      const existing = await documentsRepo.findByHash(input.contentHash);
+      if (existing) return { document: existing, existing: true };
+      await filesRepo.put(input.id, file);
+      if (cover) await db.covers.put({ documentId: input.id, blob: cover });
+      return { document: await documentsRepo.create(input), existing: false };
+    });
+  },
+};
+
+/** Device-local flags and ids (not synced). */
+export const metaRepo = {
+  async get<T>(key: string): Promise<T | undefined> {
+    return (await db.meta.get(key))?.value as T | undefined;
+  },
+  async set(key: string, value: unknown): Promise<void> {
+    await db.meta.put({ key, value });
+  },
+};

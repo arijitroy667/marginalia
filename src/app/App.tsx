@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router';
+import { LibraryPage } from '../features/library/LibraryPage';
 import { useTheme } from '../features/theme/useTheme';
 import { en } from '../shared/i18n/en';
 import { Toaster } from '../shared/ui/toast';
@@ -14,7 +15,7 @@ const router = createBrowserRouter([
       {
         element: <Shell />,
         children: [
-          { path: '/', element: <Page title={en.library.title} /> },
+          { path: '/', element: <LibraryPage /> },
           { path: '/settings', element: <Page title={en.settings.title} /> },
         ],
       },

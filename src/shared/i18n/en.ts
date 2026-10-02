@@ -1,4 +1,6 @@
-import { APP_NAME } from '../../config';
+import { APP_NAME, MAX_FILE_BYTES } from '../../config';
+
+const q = (s: string) => `“${s}”`;
 
 /** All UI strings (NFR-I18N-01). Components import `en` instead of inlining literals. */
 export const en = {
@@ -23,7 +25,27 @@ export const en = {
     notFoundBody: 'This address does not exist in the app.',
     backToLibrary: 'Back to library',
   },
-  library: { title: 'Library' },
+  library: {
+    title: 'Library',
+    add: 'Add PDF',
+    dropHere: 'Drop PDFs to add them',
+    added: (title: string) => `Added ${q(title)}`,
+    existing: (title: string) => `${q(title)} is already in your library`,
+    rejected: {
+      empty: (n: string) => `${q(n)} is empty.`,
+      'too-large': (n: string) => `${q(n)} is larger than ${MAX_FILE_BYTES / 1024 / 1024} MB.`,
+      'not-pdf': (n: string) => `${q(n)} is not a PDF.`,
+      corrupt: (n: string) => `${q(n)} could not be opened. It may be damaged or unsupported.`,
+      'password-cancelled': (n: string) => `${q(n)} was not added: no password.`,
+    },
+  },
+  password: {
+    title: 'Password required',
+    body: (n: string) => `${q(n)} is protected. The password unlocks it on this device and is never stored.`,
+    wrong: 'Wrong password. Try again.',
+    label: 'Password',
+    submit: 'Unlock',
+  },
   reader: { title: 'Reader' },
   settings: { title: 'Settings' },
   auth: { title: 'Sign in' },

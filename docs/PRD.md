@@ -306,7 +306,7 @@ Numeric targets are **initial budgets**: measure in the spikes, then tighten or 
 | NFR-A11Y-02 | Touch | Touch targets ≥ 44 × 44 CSS px. |
 | NFR-SEC-01 | Tenancy | Row Level Security on **every** table and on `storage.objects`; policies use `(select auth.uid())`; an automated two-user test proves user B cannot read or write user A's rows or files. |
 | NFR-SEC-02 | Secrets | No service-role key in the client, repo, or CI logs. Only the anon key + project URL ship to the browser. `.env.example` documents variables. |
-| NFR-SEC-03 | Untrusted input | Uploaded PDFs are untrusted. Pin `pdfjs-dist` at or above the fix for CVE-2024-4367 (fixed in 4.2.67; re-verify for the version you install), set `isEvalSupported: false`, keep rendering in the PDF.js worker, and upgrade deliberately (R9). |
+| NFR-SEC-03 | Untrusted input | Uploaded PDFs are untrusted. Pin `pdfjs-dist` at or above the fix for CVE-2024-4367 (fixed in 4.2.67; pinned 6.3.289, which has no eval code paths, so `isEvalSupported` no longer exists — ADR 0008), keep rendering in the PDF.js worker, `enableXfa: false`, and upgrade deliberately (R9). |
 | NFR-SEC-04 | CSP | Strict Content-Security-Policy (no `unsafe-eval`; check whether PDF.js image decoders need `wasm-unsafe-eval`); verified in CI by loading the built app and a corpus PDF with the CSP enforced. |
 | NFR-SEC-05 | XSS | Note Markdown rendered without raw HTML; links `rel="noopener noreferrer"`; no `dangerouslySetInnerHTML` outside a reviewed sanitiser wrapper. |
 | NFR-SEC-06 | Privacy | PDF contents, quotes and notes never appear in logs, analytics or error reports (scrub in the error-reporting `beforeSend`). No third-party trackers. |
@@ -379,25 +379,23 @@ Versions: use the **latest stable at scaffold time**, record exact versions in t
   2. **Annotation overlay** (SVG `rect`s from stored normalised rects, expressed in `%` so zoom needs no recomputation),
   3. **Gutter** (absolutely positioned markers; desktop: a 28 px lane outside the page edge; mobile: inset at the page's right edge).
 - Overlays render through React portals keyed by page number. They are never drawn into the canvas, so theme/zoom changes do not touch them.
-- PDF.js initialisation (copy `cmaps/` and `standard_fonts/` from `pdfjs-dist` into `public/pdfjs/` at build time and precache them for offline use):
+- PDF.js initialisation (copy `cmaps/`, `standard_fonts/`, `wasm/` and `iccs/` from `pdfjs-dist` into `public/pdfjs/` at build time and precache them for offline use):
 
 ```ts
-import * as pdfjsLib from 'pdfjs-dist';
+// src/features/reader/pdf/pdfjs.ts (PDF.js 6.3.289; ADR 0008)
+import * as pdfjs from 'pdfjs-dist';
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
-
-export function openPdf(source: { data: Uint8Array } | { url: string }) {
-  return pdfjsLib.getDocument({
-    ...source,
-    cMapUrl: '/pdfjs/cmaps/',
-    cMapPacked: true,
+export function openPdf(blob: Blob, askPassword?: PasswordPrompt) {
+  // a PDFDataRangeTransport serves byte ranges straight from the Blob (no full copy on the main thread)
+  return pdfjs.getDocument({
+    range: new BlobRangeTransport(blob),
+    cMapUrl: '/pdfjs/cmaps/', cMapPacked: true,
     standardFontDataUrl: '/pdfjs/standard_fonts/',
-    isEvalSupported: false,
-    enableXfa: false,
-  });
+    wasmUrl: '/pdfjs/wasm/', iccUrl: '/pdfjs/iccs/',
+    enableXfa: false, // PDF.js 6 removed isEvalSupported: it has no eval code paths left
+  }).promise;
 }
 ```
 

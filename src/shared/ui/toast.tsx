@@ -35,6 +35,7 @@ export function Toaster() {
       {list.map((t) => (
         <Toast.Root
           key={t.id}
+          type="background" // aria-live polite (NFR-A11Y-01)
           onOpenChange={(open) => !open && dismiss(t.id)}
           className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ui-fg shadow-lg"
         >

@@ -18,3 +18,4 @@ fixtures/pdfs/12-large-500p.pdf
 spikes/**/out/
 supabase/.temp/
 supabase/.branches/
+public/pdfjs/
