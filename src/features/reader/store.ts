@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Anchor, NRect } from '../../core/anchors/types';
+import type { AnnotationRow } from '../../core/db/models';
 import type { Line } from '../../core/line-engine';
 
 /** Ephemeral reader UI state (PRD §7: Zustand for UI only). */
@@ -17,6 +18,10 @@ interface ReaderState {
   flashAt: (anchor: Anchor) => void;
   resume: { anchor: Anchor; id: number } | null;
   markResume: (anchor: Anchor) => void;
+  /** Open note editor (FR-NOT-01/03): the line it is anchored to and the notes on it (none = a new note). */
+  notes: { anchor: Anchor; rows: AnnotationRow[]; id: number } | null;
+  openNotes: (anchor: Anchor, rows: AnnotationRow[]) => void;
+  closeNotes: () => void;
 }
 
 let flashes = 0;
@@ -36,4 +41,7 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
     set({ resume: { anchor, id } });
     setTimeout(() => get().resume?.id === id && set({ resume: null }), RESUME_MARK_MS);
   },
+  notes: null,
+  openNotes: (anchor, rows) => set({ notes: { anchor, rows, id: ++flashes }, selection: null }),
+  closeNotes: () => set({ notes: null }),
 }));

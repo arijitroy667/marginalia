@@ -166,8 +166,91 @@
   justify-content: center;
   gap: 6px;
 }
-.mg-toolbar .mg-icon-btn[aria-pressed='true'] {
+.mg-toolbar .mg-icon-btn[aria-pressed='true'],
+.mg-toolbar .mg-icon-btn[data-on] {
   color: var(--accent);
+}
+/* Note indicator (FR-NOT-02): bubble or dot, filled with the line's highlight colour, outlined for 3:1 */
+.mg-note {
+  position: relative;
+  display: inline-flex;
+}
+.mg-note-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 28px;
+  color: var(--accent);
+}
+.mg-note-btn svg {
+  fill: var(--note-fill, transparent);
+}
+.mg-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid var(--accent);
+  background: var(--note-fill, var(--accent));
+}
+.mg-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+}
+@media (pointer: coarse) {
+  .mg-note-btn::before {
+    content: '';
+    position: absolute;
+    inset: -8px -10px;
+  }
+}
+/* desktop hover preview: the first 3 lines (FR-NOT-03) */
+.mg-preview {
+  display: none;
+}
+@media (hover: hover) {
+  .mg-note:hover .mg-preview {
+    position: absolute;
+    right: calc(100% + 6px);
+    top: 50%;
+    transform: translateY(-50%);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    width: 16rem;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ui-fg);
+    font-size: 13px;
+    white-space: pre-wrap;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.16);
+  }
+}
+.mg-note-anchor {
+  position: absolute;
+  pointer-events: none;
+}
+.mg-note-popover {
+  width: min(22rem, calc(100vw - 16px));
+}
+.mg-hl-rule {
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  stroke-opacity: 1;
+  filter: brightness(0.6);
 }
 /* Gutter ribbon (FR-BKM-02): 28 px target on desktop, 44 px on touch (NFR-A11Y). */
 .mg-ribbon {

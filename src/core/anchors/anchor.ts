@@ -65,3 +65,14 @@ export function intersects(a: Anchor, b: Anchor): boolean {
     ),
   );
 }
+
+/** Groups items whose anchors sit on the same visual line (`sameLine`), top to bottom: one gutter row per group. */
+export function groupByLine<T>(items: readonly T[], anchorOf: (item: T) => Anchor): T[][] {
+  const groups: T[][] = [];
+  for (const item of [...items].sort((a, b) => markerY(anchorOf(a)) - markerY(anchorOf(b)))) {
+    const last = groups.at(-1);
+    if (last && sameLine(anchorOf(last[0]!), anchorOf(item))) last.push(item);
+    else groups.push([item]);
+  }
+  return groups;
+}

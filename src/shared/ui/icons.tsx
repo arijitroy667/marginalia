@@ -13,3 +13,4 @@ export const ThemeIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M12 3a9 9 0 1 
 export const CheckIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M5 12l5 5L20 7" {...p} />;
 export const CloseIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M6 6l12 12M18 6L6 18" {...p} />;
 export const BookmarkIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M6 3h12v18l-6-4.5L6 21z" {...p} />;
+export const NoteIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M4 5h16v11H9l-5 4z" {...p} />;

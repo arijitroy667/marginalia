@@ -10,6 +10,7 @@ import { undoable } from '../LineActions';
 
 /** Gutter ribbon (FR-BKM-02); click/tap opens a popover to rename or delete it (Appendix A). */
 export function BookmarkMarker({ row }: { row: AnnotationRow }) {
+  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
   const deleting = useRef(false);
   const touch = useMediaQuery('(pointer: coarse)'); // phones: opening must not pop the on-screen keyboard
@@ -21,12 +22,33 @@ export function BookmarkMarker({ row }: { row: AnnotationRow }) {
     if (to !== row.label) void setLabel(row.id, row.label, to).catch(() => toast(en.reader.saveFailed));
   };
   return (
-    <Popover.Root onOpenChange={(open) => !open && commit()}>
-      <Popover.Trigger className="mg-ribbon" aria-label={en.reader.bookmarkMarker(shown || en.reader.pageShort(row.page))}>
+    <Popover.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) commit();
+      }}
+    >
+      <Popover.Trigger
+        className="mg-ribbon"
+        aria-label={en.reader.bookmarkMarker(shown || en.reader.pageShort(row.page))}
+      >
         <BookmarkIcon fill="currentColor" width={18} height={18} />
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content side="left" align="center" sideOffset={8} collisionPadding={8} className="mg-popover" onOpenAutoFocus={(e) => touch && e.preventDefault()}>
+        <Popover.Content
+          side="left"
+          align="center"
+          sideOffset={8}
+          collisionPadding={8}
+          className="mg-popover"
+          onOpenAutoFocus={(e) => touch && e.preventDefault()}
+          onKeyDown={(e) => {
+            if (e.key !== 'Escape') return;
+            setOpen(false); // also when a newer toast is Radix's top layer and takes the Esc
+            commit();
+          }}
+        >
           <p className="text-xs text-muted">{en.reader.bookmarkHeading(row.page)}</p>
           <input
             aria-label={en.reader.bookmarkLabel}
@@ -42,7 +64,10 @@ export function BookmarkMarker({ row }: { row: AnnotationRow }) {
             className="min-h-11 self-end rounded-md px-3 text-sm font-medium text-accent hover:bg-ui-bg"
             onClick={() => {
               deleting.current = true; // closing must not save a pending rename of a deleted bookmark
-              void removeAnnotation(row.id).then((c) => toast(en.reader.bookmarkRemoved, undoable(c)), () => toast(en.reader.saveFailed));
+              void removeAnnotation(row.id).then(
+                (c) => toast(en.reader.bookmarkRemoved, undoable(c)),
+                () => toast(en.reader.saveFailed),
+              );
             }}
           >
             {en.reader.deleteBookmark}

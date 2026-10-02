@@ -67,9 +67,12 @@ export function clearHistory(): void {
 }
 
 const onLine = async (documentId: string, anchor: Anchor, ...kinds: AnnotationKind[]) =>
-  (await annotationsRepo.onPage(documentId, anchor.page)).filter((a) => kinds.includes(a.kind) && intersects(a.anchor, anchor));
+  (await annotationsRepo.onPage(documentId, anchor.page)).filter(
+    (a) => kinds.includes(a.kind) && intersects(a.anchor, anchor),
+  );
 
-const created = (id: string) => record({ undo: () => annotationsRepo.remove(id), redo: () => annotationsRepo.restore(id) });
+const created = (id: string) =>
+  record({ undo: () => annotationsRepo.remove(id), redo: () => annotationsRepo.restore(id) });
 const removed = async (id: string) => {
   await annotationsRepo.remove(id);
   return record({ undo: () => annotationsRepo.restore(id), redo: () => annotationsRepo.remove(id) });
@@ -78,12 +81,25 @@ const removed = async (id: string) => {
 export type HighlightOp = 'created' | 'replaced' | 'removed';
 
 /** Colour the line(s) of `anchor`: the same colour again removes it, another colour replaces it (FR-HLT-03). */
-export const toggleHighlight = (documentId: string, anchor: Anchor, colorId: number): Promise<{ op: HighlightOp; command: Command }> =>
+export const toggleHighlight = (
+  documentId: string,
+  anchor: Anchor,
+  colorId: number,
+): Promise<{ op: HighlightOp; command: Command }> =>
   serial(async () => {
     const hits = await onLine(documentId, anchor, 'highlight');
     const hit = hits.find((h) => h.colorId === colorId) ?? hits[0];
     if (!hit) {
-      const row = await annotationsRepo.create({ id: crypto.randomUUID(), documentId, kind: 'highlight', page: anchor.page, anchor, colorId, body: null, label: null });
+      const row = await annotationsRepo.create({
+        id: crypto.randomUUID(),
+        documentId,
+        kind: 'highlight',
+        page: anchor.page,
+        anchor,
+        colorId,
+        body: null,
+        label: null,
+      });
       return { op: 'created', command: created(row.id) };
     }
     if (hit.colorId === colorId) return { op: 'removed', command: await removed(hit.id) };
@@ -91,16 +107,32 @@ export const toggleHighlight = (documentId: string, anchor: Anchor, colorId: num
     await annotationsRepo.update(hit.id, { colorId });
     return {
       op: 'replaced',
-      command: record({ undo: () => annotationsRepo.update(hit.id, { colorId: from }), redo: () => annotationsRepo.update(hit.id, { colorId }) }),
+      command: record({
+        undo: () => annotationsRepo.update(hit.id, { colorId: from }),
+        redo: () => annotationsRepo.update(hit.id, { colorId }),
+      }),
     };
   });
 
 /** Quick bookmark (FR-BKM-01): bookmark the line, or remove the bookmark already on it. */
-export const toggleBookmark = (documentId: string, anchor: Anchor, label: string | null): Promise<{ op: 'created' | 'removed'; command: Command }> =>
+export const toggleBookmark = (
+  documentId: string,
+  anchor: Anchor,
+  label: string | null,
+): Promise<{ op: 'created' | 'removed'; command: Command }> =>
   serial(async () => {
     const hit = (await onLine(documentId, anchor, 'bookmark'))[0];
     if (hit) return { op: 'removed', command: await removed(hit.id) };
-    const row = await annotationsRepo.create({ id: crypto.randomUUID(), documentId, kind: 'bookmark', page: anchor.page, anchor, colorId: null, body: null, label });
+    const row = await annotationsRepo.create({
+      id: crypto.randomUUID(),
+      documentId,
+      kind: 'bookmark',
+      page: anchor.page,
+      anchor,
+      colorId: null,
+      body: null,
+      label,
+    });
     return { op: 'created', command: created(row.id) };
   });
 
@@ -108,14 +140,20 @@ export const toggleBookmark = (documentId: string, anchor: Anchor, label: string
 export const setLabel = (id: string, from: string | null, to: string | null): Promise<Command> =>
   serial(async () => {
     await annotationsRepo.update(id, { label: to });
-    return record({ undo: () => annotationsRepo.update(id, { label: from }), redo: () => annotationsRepo.update(id, { label: to }) });
+    return record({
+      undo: () => annotationsRepo.update(id, { label: from }),
+      redo: () => annotationsRepo.update(id, { label: to }),
+    });
   });
 
 /** Tombstone one annotation (marker popover Delete), undoable. */
 export const removeAnnotation = (id: string): Promise<Command> => serial(() => removed(id));
 
 /** Delete/Backspace: tombstone the highlights and bookmarks on the selected line(s) as one step (FR-HLT-04). */
-export const removeOnLine = (documentId: string, anchor: Anchor): Promise<{ command: Command; kinds: AnnotationKind[] } | null> =>
+export const removeOnLine = (
+  documentId: string,
+  anchor: Anchor,
+): Promise<{ command: Command; kinds: AnnotationKind[] } | null> =>
   serial(async () => {
     const hits = await onLine(documentId, anchor, 'highlight', 'bookmark');
     const ids = hits.map((h) => h.id);
@@ -130,4 +168,66 @@ export const removeOnLine = (documentId: string, anchor: Anchor): Promise<{ comm
       },
     });
     return { command, kinds: [...new Set(hits.map((h) => h.kind))] };
+  });
+
+/** One open note editor (FR-NOT-01). `original` is null for a note created in this session. */
+export interface NoteSession {
+  id: string | null;
+  original: string | null;
+  saved: string;
+  deleted: boolean;
+}
+
+export const noteSession = (note: { id: string; body: string | null } | null): NoteSession => ({
+  id: note?.id ?? null,
+  original: note ? (note.body ?? '') : null,
+  saved: note?.body ?? '',
+  deleted: false,
+});
+
+async function writeNote(documentId: string, anchor: Anchor, st: NoteSession, body: string): Promise<void> {
+  if (!body.trim() || body === st.saved || st.deleted) return; // an empty note is never stored
+  if (st.id) await annotationsRepo.update(st.id, { body });
+  else
+    st.id = (
+      await annotationsRepo.create({
+        id: crypto.randomUUID(),
+        documentId,
+        kind: 'note',
+        page: anchor.page,
+        anchor,
+        colorId: null,
+        body,
+        label: null,
+      })
+    ).id;
+  st.saved = body;
+}
+
+/** Autosave while typing (500 ms debounce, blur): the row appears with the first non-empty text. Not an undo step. */
+export const saveNote = (documentId: string, anchor: Anchor, st: NoteSession, body: string): Promise<void> =>
+  serial(() => writeNote(documentId, anchor, st, body));
+
+/**
+ * Closing the editor saves the last text and makes the whole session one undo step. A new note left empty is
+ * discarded silently; an existing note emptied without confirming the delete keeps its stored text.
+ */
+export const closeNote = (documentId: string, anchor: Anchor, st: NoteSession, body: string): Promise<void> =>
+  serial(async () => {
+    if (st.deleted) return;
+    if (!body.trim()) {
+      if (st.original === null && st.id) await annotationsRepo.remove(st.id);
+      return;
+    }
+    await writeNote(documentId, anchor, st, body);
+    const id = st.id;
+    if (!id) return;
+    if (st.original === null) created(id);
+    else if (body !== st.original) {
+      const from = st.original;
+      record({
+        undo: () => annotationsRepo.update(id, { body: from }),
+        redo: () => annotationsRepo.update(id, { body }),
+      });
+    }
   });

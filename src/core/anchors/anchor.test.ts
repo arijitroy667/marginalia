@@ -2,7 +2,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { AnchorSchema } from '../db/models';
 import { buildPageLines, type RawTextItem } from '../line-engine';
-import { anchorFromLine, anchorFromSelection, intersects, markerY, pageAnchor, quoteAt, sameLine } from './anchor';
+import { anchorFromLine, anchorFromSelection, groupByLine, intersects, markerY, pageAnchor, quoteAt, sameLine } from './anchor';
 
 const SIZE = { width: 600, height: 800 };
 const item = (str: string, x: number, base: number, w = 240): RawTextItem => ({
@@ -64,5 +64,14 @@ describe('intersects (FR-HLT-03)', () => {
     expect(intersects(at(1, band), at(1, { ...band, x: 0.55 }))).toBe(false);
     expect(intersects(at(1, band), at(1, { ...band, y: 0.22 }))).toBe(false);
     expect(intersects(at(1, band), at(2, band))).toBe(false);
+  });
+});
+
+describe('groupByLine (gutter rows)', () => {
+  it('stacks items on one line, any column, ordered top to bottom', () => {
+    const a = (y: number, x = 0.1) => ({ ...pageAnchor(1), rects: [{ x, y, w: 0.3, h: 0.02 }] });
+    const items = [{ id: 'c', a: a(0.5) }, { id: 'a', a: a(0.2) }, { id: 'b', a: a(0.201, 0.6) }];
+    expect(groupByLine(items, (i) => i.a).map((g) => g.map((i) => i.id))).toEqual([['a', 'b'], ['c']]);
+    expect(groupByLine([], (i: { a: ReturnType<typeof a> }) => i.a)).toEqual([]);
   });
 });

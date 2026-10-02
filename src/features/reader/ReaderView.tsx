@@ -13,7 +13,7 @@ import { useSettings } from '../settings/useSettings';
 import { ThemeMenu } from '../theme/ThemeMenu';
 import { clearHistory, redo, undo } from './commands';
 import { FindBar } from './FindBar';
-import { applyColour, deleteOnSelection, LineActions, quickBookmark } from './LineActions';
+import { applyColour, deleteOnSelection, LineActions, openNoteEditor, quickBookmark } from './LineActions';
 import { adjacentBookmark, jumpToAnchor, READING_INSET_PX, readingLine, scrollToPoint } from './navigation';
 import { Overlays } from './overlay/Overlays';
 import { ensureVisible, moveCursor, useLineTap, useNativeSelection } from './selection/useLineSelection';
@@ -183,6 +183,11 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
         toast(en.reader.activeColour(swatch.label));
         return;
       }
+      if (sel && (e.key === 'n' || e.key === 'N')) {
+        e.preventDefault(); // or the N would land in the note's textarea
+        void openNoteEditor(row.id);
+        return;
+      }
       if (sel && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
         void deleteOnSelection(row.id);
@@ -243,7 +248,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   useEffect(() => {
     compactRef.current = compact;
   }, [compact]);
-  useEffect(() => () => useReaderStore.getState().select(null), []); // selection never outlives the reader
+  useEffect(() => () => useReaderStore.setState({ selection: null, notes: null }), []); // selection/editor never outlive the reader
   useEffect(() => clearHistory(), [row.id]); // undo history is per document (FR-KEY-06)
   const onBlankTap = useCallback(() => compactRef.current && setChrome((c) => !c), []); // phones: tap blank toggles chrome
   useLineTap(ready, getViewer, container, pdf, row.contentHash, onBlankTap, lastPointer);

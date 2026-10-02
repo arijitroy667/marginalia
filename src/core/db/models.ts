@@ -99,6 +99,7 @@ export const SettingsSchema = z.looseObject({
     .max(PALETTE_MAX)
     .refine((p) => new Set(p.map((e) => e.id)).size === p.length, 'palette ids must be unique')
     .default(() => DEFAULT_PALETTE.map((e) => ({ ...e }))),
+  gutterStyle: z.enum(['bubble', 'dot']).default('bubble'), // note indicator (FR-NOT-02)
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 export const DEFAULT_SETTINGS: Settings = SettingsSchema.parse({});

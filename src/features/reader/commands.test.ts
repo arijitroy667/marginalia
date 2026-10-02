@@ -2,7 +2,21 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Anchor, NRect } from '../../core/anchors/types';
 import { db } from '../../core/db/schema';
-import { clearHistory, HISTORY_LIMIT, redo, removeOnLine, setLabel, toggleBookmark, toggleHighlight, undo, undoCommand } from './commands';
+import {
+  clearHistory,
+  closeNote,
+  HISTORY_LIMIT,
+  noteSession,
+  redo,
+  removeAnnotation,
+  removeOnLine,
+  saveNote,
+  setLabel,
+  toggleBookmark,
+  toggleHighlight,
+  undo,
+  undoCommand,
+} from './commands';
 
 const DOC = '00000000-0000-4000-8000-000000000001';
 const line = (y: number, x = 0.1, w = 0.35): NRect => ({ x, y, w, h: 0.02 });
@@ -27,7 +41,9 @@ describe('toggleHighlight (FR-HLT-01/03)', () => {
     expect((await toggleHighlight(DOC, at(line(0.2)), 3)).op).toBe('removed');
     expect(await live()).toEqual([]);
     expect((await db.annotations.get(row!.id))!.deletedAt).not.toBeNull();
-    expect(await db.outbox.where('[entity+entityId]').equals(['annotation', row!.id]).toArray()).toMatchObject([{ op: 'delete' }]);
+    expect(await db.outbox.where('[entity+entityId]').equals(['annotation', row!.id]).toArray()).toMatchObject([
+      { op: 'delete' },
+    ]);
   });
 
   it('a sub-line selection matches the highlighted line; the other column and the next line do not', async () => {
@@ -115,7 +131,10 @@ describe('bookmarks (FR-BKM-01/02)', () => {
     expect((await toggleBookmark(DOC, at(line(0.3)), 'The first sixty characters')).op).toBe('created');
     const rows = await live(); // primary-key (random uuid) order
     expect(rows.map((a) => a.kind).sort()).toEqual(['bookmark', 'highlight']);
-    expect(rows.find((a) => a.kind === 'bookmark')).toMatchObject({ label: 'The first sixty characters', colorId: null });
+    expect(rows.find((a) => a.kind === 'bookmark')).toMatchObject({
+      label: 'The first sixty characters',
+      colorId: null,
+    });
     expect((await toggleBookmark(DOC, at(line(0.3)), 'ignored')).op).toBe('removed');
     expect((await live()).map((a) => a.kind)).toEqual(['highlight']);
     await undo(); // undoing the removal restores the same row
@@ -129,5 +148,59 @@ describe('bookmarks (FR-BKM-01/02)', () => {
     expect((await live())[0]!.label).toBe('new');
     await undo();
     expect((await live())[0]!.label).toBe('old');
+  });
+});
+
+describe('notes (FR-NOT-01, FR-KEY-06)', () => {
+  const notes = async () => (await live()).filter((a) => a.kind === 'note');
+
+  it('autosave creates the row with the first text; closing makes the session one undo step', async () => {
+    const st = noteSession(null);
+    await saveNote(DOC, at(line(0.3)), st, '');
+    expect(await notes()).toEqual([]); // nothing typed yet: nothing stored
+    await saveNote(DOC, at(line(0.3)), st, 'First');
+    await saveNote(DOC, at(line(0.3)), st, 'First thought');
+    await closeNote(DOC, at(line(0.3)), st, 'First thought, final');
+    expect(await notes()).toMatchObject([{ body: 'First thought, final', colorId: null, page: 1 }]);
+    await undo(); // the whole session
+    expect(await notes()).toEqual([]);
+    await redo();
+    expect(await notes()).toHaveLength(1);
+  });
+
+  it('a new note left empty is discarded silently, even after an autosave', async () => {
+    const st = noteSession(null);
+    await saveNote(DOC, at(line(0.3)), st, 'x');
+    await closeNote(DOC, at(line(0.3)), st, '   ');
+    expect(await notes()).toEqual([]);
+    expect(await undo()).toBe(false); // not an undo step
+  });
+
+  it('editing an existing note is one step back to the original; emptying it without the delete keeps it', async () => {
+    const first = noteSession(null);
+    await closeNote(DOC, at(line(0.3)), first, 'original');
+    const row = (await notes())[0]!;
+    const edit = noteSession(row);
+    await saveNote(DOC, at(line(0.3)), edit, 'changed');
+    await closeNote(DOC, at(line(0.3)), edit, 'changed again');
+    expect((await notes())[0]!.body).toBe('changed again');
+    await undo();
+    expect((await notes())[0]!.body).toBe('original');
+
+    const cleared = noteSession((await notes())[0]!);
+    await saveNote(DOC, at(line(0.3)), cleared, '');
+    await closeNote(DOC, at(line(0.3)), cleared, '');
+    expect((await notes())[0]!.body).toBe('original');
+  });
+
+  it('a confirmed delete is undoable and the closing editor does not resurrect it', async () => {
+    await closeNote(DOC, at(line(0.3)), noteSession(null), 'to delete');
+    const st = noteSession((await notes())[0]!);
+    st.deleted = true;
+    await removeAnnotation(st.id!);
+    await closeNote(DOC, at(line(0.3)), st, 'to delete');
+    expect(await notes()).toEqual([]);
+    await undo();
+    expect(await notes()).toMatchObject([{ body: 'to delete' }]);
   });
 });
