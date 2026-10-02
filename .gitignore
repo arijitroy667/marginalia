@@ -1,0 +1,20 @@
+node_modules/
+dist/
+dev-dist/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+*.log
+.env
+.env.local
+.env.*.local
+.DS_Store
+Thumbs.db
+__pycache__/
+# large / third-party fixtures are fetched or generated, never committed
+fixtures/pdfs/real/*.pdf
+fixtures/pdfs/12-large-500p.pdf
+spikes/**/out/
+supabase/.temp/
+supabase/.branches/
