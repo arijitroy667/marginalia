@@ -15,9 +15,19 @@ OS/browser version and result next to each item.
 
 ## M2 exit — annotation core
 
-- [ ] Highlight, note, bookmark a line by touch; gutter markers ≥ 44 px hit area.
-- [ ] Theme switch Light/Warm/Dark on a text PDF and a scanned PDF; images natural in Dark on text PDFs.
-- [ ] Resume returns to the same line after closing and reopening the installed app.
+- [ ] Tap a line: band + toolbar; tap blank space: bars toggle / toolbar closes; long-press: native word selection,
+      our toolbar sits below it (not under the iOS callout); drag the handles across 3 lines → 3 rects.
+- [ ] Highlight with each swatch; same swatch again removes it (Undo in the toast restores it); another swatch recolours.
+- [ ] Note: toolbar Note opens the editor above the keyboard; type, tap outside → saved; bubble in the gutter
+      (≥ 44 px hit area) reopens it; clearing the text asks before deleting.
+- [ ] Bookmark: bottom-bar Quick bookmark marks the reading line; ribbon popover renames/deletes; jump from the panel.
+- [ ] Panel: swipe up on the bottom bar opens the sheet on Annotations; grabber tap expands, drag down closes;
+      filters (colour chips, text) and the per-colour eye toggle work.
+- [ ] Input → visible annotation feels instant (< 100 ms, NFR-PERF-03).
+- [ ] Theme switch Light/Warm/Dark on a text PDF, a slide deck (`04-slides`) and a scanned PDF: text inverted,
+      photos natural, navy slide untouched, scanned page inverted; warmth slider tints only the page area.
+- [ ] Resume returns to the same line (triangle marker for 2 s) after closing and reopening the installed app.
+- [ ] Toasts never cover the bottom bar.
 
 ## M4 — release
 

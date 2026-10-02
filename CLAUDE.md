@@ -9,6 +9,7 @@ A book-style PDF reader where the *line* is a first-class object: one-action hig
 - `pnpm dev` · `pnpm build` · `pnpm typecheck` (app + node + pure-core projects) · `pnpm lint` · `pnpm test` (Vitest unit) · `pnpm e2e` (Playwright vs production build: Chromium, WebKit, Pixel 7, iPhone 14)
 - Hosted Supabase via `.env.local` (see `.env.example`): `pnpm db:push` (migrations) · `pnpm db:types > src/core/supabase/types.ts` · `pnpm test:db` (two-user tenancy suite)
 - Fixtures: `python fixtures/generate.py [--large] [--force]` · real review corpus: `node fixtures/fetch-real.mjs`
+- Linux WebKit/iPhone E2E from Windows (Docker): see `scripts/e2e-linux.sh` · perf budgets: `PERF=1 pnpm exec playwright test e2e/perf.spec.ts --workers 1`
 
 ## Architecture rules (hard)
 1. `src/core/line-engine` and `src/core/anchors` are pure TS: no React, DOM, Supabase, or PDF.js types.

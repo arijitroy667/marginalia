@@ -25,3 +25,18 @@ Notes:
   Line Engine 0.27 ms per 3,000 chars (ADR 0001); theme switch 5–86 ms (ADR 0002); pinch 60 fps at 4x
   CPU (ADR 0003).
 - App-shell JS: 195 KB gzip initial (budget ≤ 250 KB, NFR-PERF-08); PDF.js and the reader load lazily.
+
+## M2 exit — NFR-PERF-03 / NFR-PERF-05 (2026-10-03)
+
+`PERF=1 pnpm exec playwright test e2e/perf.spec.ts --project chromium -g NFR-PERF-03 --workers 1`: key press →
+annotation element in the DOM and painted (next frame), 5 lines each, `01-single-column-prose.pdf`.
+
+| Input → visible | Desktop Chrome 1x CPU | 4x CPU throttle (mid-range phone proxy) | Budget |
+|---|---|---|---|
+| `H` → highlight wash | median **14 ms** (max 42) | median **47 ms** (max 107, first, cold) | < 100 ms ✅ |
+| `B` → bookmark ribbon (+ toast) | median **14 ms** (max 37) | median **83 ms** (max 86) | < 100 ms ✅ |
+
+- The write is optimistic: one Dexie transaction (row + outbox) then a live-query re-render; no network on the path.
+- Theme switch (NFR-PERF-05): 12–31 ms to the next frame, no re-render (`e2e/theme.spec.ts`, ADR 0002).
+- Real-device confirmation is part of the M2 section of `docs/qa-checklist.md`.
+
