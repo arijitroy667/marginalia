@@ -20,6 +20,26 @@ test.describe('app shell + chrome themes (T-101, FR-THM-01/07)', () => {
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#EFE6CF');
   });
 
+  test('chosen theme persists across reloads (Dexie settings, T-104)', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Theme' }).click();
+    await page.getByRole('menuitemradio', { name: 'Warm' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'warm');
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'warm');
+    const stored = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const req = indexedDB.open('marginalia');
+          req.onsuccess = () => {
+            const get = req.result.transaction('meta').objectStore('meta').get('settings');
+            get.onsuccess = () => resolve((get.result as { value: { settings: { theme: string } } }).value.settings.theme);
+          };
+        }),
+    );
+    expect(stored).toBe('warm');
+  });
+
   test('System follows prefers-color-scheme', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.goto('/');

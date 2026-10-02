@@ -24,7 +24,7 @@ export function ThemeMenu() {
           className="z-50 min-w-40 rounded-lg border border-line bg-surface p-1 text-sm text-ui-fg shadow-lg"
         >
           <DropdownMenu.Label className="px-2 py-1 text-xs text-muted">{en.theme.label}</DropdownMenu.Label>
-          <DropdownMenu.RadioGroup value={theme} onValueChange={(v) => updateSettings({ theme: v as ThemeId })}>
+          <DropdownMenu.RadioGroup value={theme} onValueChange={(v) => void updateSettings({ theme: v as ThemeId })}>
             {OPTIONS.map((id) => (
               <DropdownMenu.RadioItem
                 key={id}

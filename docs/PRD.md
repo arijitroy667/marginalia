@@ -527,10 +527,13 @@ export interface OutboxItem {
   op: OutboxOp;
   payload: unknown;        // full row snapshot (Zod-validated)
   attempts: number;
+  status: 'pending' | 'failed'; // failed = permanent error, shown on the Sync issues screen
   lastError?: string;
   createdAt: number;
 }
 ```
+
+Outbox entries coalesce at **write time**: a repository write replaces older entries for the same `(entity, entityId)` in the same transaction (payloads are full snapshots, so this is lossless; ADR 0007).
 
 **Push**: take outbox items ordered by `seq`; coalesce multiple upserts of the same `(entity, entityId)` to the newest; batch ≤ 100; `upsert ... on conflict (id)`; on success delete the outbox row; on retryable error back off 1 s → 60 s with jitter; on a permanent error (4xx other than 401/409/429) move the item to `failed` and surface it (FR-SYN-10). `401` ⇒ refresh the session or ask to log in again; the outbox is retained.
 
@@ -764,7 +767,7 @@ export class AppDB extends Dexie {
       positions: 'documentId, updatedAt',
       files: 'documentId, lastAccessAt',
       covers: 'documentId',
-      outbox: '++seq, [entity+entityId]',
+      outbox: '++seq, [entity+entityId], status',   // status: 'pending' | 'failed' (FR-SYN-10)
       meta: 'key',
       lineCache: '[docHash+page+engine]',
     });
@@ -772,7 +775,7 @@ export class AppDB extends Dexie {
 }
 ```
 
-Rows mirror the SQL columns (camelCase) plus local-only fields (`syncState`, `localUpdatedAt`). Every Dexie schema change adds a new `version(n)` with an `upgrade()` function and a test.
+Rows mirror the SQL columns (camelCase) **without `user_id`** (the server fills it from the JWT; the local DB records its owner) plus local-only `localUpdatedAt`; sync state is derived from the outbox (ADR 0007). Every Dexie schema change adds a new `version(n)` with an `upgrade()` function and a test.
 
 ---
 

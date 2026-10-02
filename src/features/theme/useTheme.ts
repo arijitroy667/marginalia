@@ -1,5 +1,5 @@
 import { useLayoutEffect, useSyncExternalStore } from 'react';
-import { useSettings } from '../settings/useSettings';
+import { cacheTheme, useSettings } from '../settings/useSettings';
 import { applyTheme, resolveTheme } from './applyTheme';
 import type { ResolvedTheme } from './tokens';
 
@@ -21,5 +21,6 @@ export function useTheme(): ResolvedTheme {
   const { theme } = useSettings();
   const resolved = resolveTheme(theme, useSystemDark());
   useLayoutEffect(() => applyTheme(resolved), [resolved]);
+  useLayoutEffect(() => cacheTheme(theme), [theme]);
   return resolved;
 }
