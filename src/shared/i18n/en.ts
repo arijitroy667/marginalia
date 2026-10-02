@@ -98,6 +98,12 @@ export const en = {
     wrapped: 'Continued from the other end',
     enterPassword: 'Enter password',
   },
+  pwa: {
+    updateAvailable: 'A new version is available.',
+    reload: 'Reload',
+    later: 'Later',
+    offlineReady: 'Ready to work offline.',
+  },
   settings: { title: 'Settings' },
   auth: { title: 'Sign in' },
 } as const;

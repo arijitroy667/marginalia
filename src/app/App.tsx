@@ -5,6 +5,7 @@ import { en } from '../shared/i18n/en';
 import { Toaster } from '../shared/ui/toast';
 import { ErrorScreen } from './ErrorScreen';
 import { Shell } from './Shell';
+import { UpdatePrompt } from './UpdatePrompt';
 
 const Page = ({ title }: { title: string }) => <h1 className="p-6 text-2xl font-semibold">{title}</h1>;
 
@@ -32,6 +33,7 @@ export function App() {
     <>
       <RouterProvider router={router} />
       <Toaster />
+      <UpdatePrompt />
     </>
   );
 }
