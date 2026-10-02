@@ -198,6 +198,32 @@
   color: var(--ui-fg);
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
 }
+/* Resume marker: left-edge triangle at the restored line for 2 s (FR-BKM-04) */
+.mg-resume {
+  position: absolute;
+  left: 2px;
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 10px solid var(--accent);
+  transform: translateY(-50%);
+  animation: mg-fade 2s ease-in forwards;
+}
+@keyframes mg-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-resume {
+    animation: none;
+  }
+}
 /* Jump target pulse, 1.2 s (PRD §10.4) */
 .mg-flash {
   fill: var(--accent);

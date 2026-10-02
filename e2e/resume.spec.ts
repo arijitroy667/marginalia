@@ -6,7 +6,7 @@ interface PositionRow {
   progress: number;
   deviceId: string;
   deviceLabel: string | null;
-  anchor: { page: number; rects: { x: number; y: number }[] } | null;
+  anchor: { page: number; rects: { x: number; y: number; h: number }[]; quote: { exact: string } } | null;
 }
 
 const TITLE = '01-single-column-prose';
@@ -51,16 +51,16 @@ test.describe('page-level resume (T-110, FR-BKM-04)', () => {
     await addViaPicker(page, `${TITLE}.pdf`);
     await openFromLibrary(page);
     await scrollTo(page, 4, 0.5);
-    await expect
-      .poll(async () => (await idb<PositionRow>(page, 'positions'))[0]?.page, { timeout: 4000 })
-      .toBe(4);
+    await expect.poll(async () => (await idb<PositionRow>(page, 'positions'))[0]?.page, { timeout: 4000 }).toBe(4);
     const [pos] = await idb<PositionRow>(page, 'positions');
     expect(pos!.anchor!.rects[0]!.y).toBeCloseTo(0.5, 1);
     expect(pos!.progress).toBeCloseTo(3.5 / 6, 1);
     expect(pos!.deviceId).toMatch(/^[0-9a-f-]{36}$/);
     expect(pos!.deviceLabel).toBeTruthy();
 
-    const barOffScreen = await page.getByRole('toolbar', { name: 'Reader toolbar' }).evaluate((el) => el.getBoundingClientRect().bottom <= 1);
+    const barOffScreen = await page
+      .getByRole('toolbar', { name: 'Reader toolbar' })
+      .evaluate((el) => el.getBoundingClientRect().bottom <= 1);
     if (barOffScreen) {
       // phones: chrome auto-hid on scroll; a tap on blank space (left margin) brings it back (without scrolling)
       const box = (await reader(page).boundingBox())!;
@@ -77,6 +77,35 @@ test.describe('page-level resume (T-110, FR-BKM-04)', () => {
     await expect(page.locator('.page[data-page-number="1"]')).toBeAttached();
     await expect.poll(() => slot(page)).toMatchObject({ page: 4 });
     expect((await slot(page))!.frac).toBeCloseTo(0.5, 1);
+  });
+
+  test('line level: saves the reading line (band + quote), brings it back to the slot, marks it for 2 s (T-206)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await addViaPicker(page, `${TITLE}.pdf`);
+    await openFromLibrary(page);
+    await scrollTo(page, 3, 0.4);
+    const saved = async () => (await idb<PositionRow>(page, 'positions'))[0]?.anchor;
+    await expect
+      .poll(
+        async () => {
+          const a = await saved();
+          return a?.page === 3 && a.quote.exact !== '';
+        },
+        { timeout: 4000 },
+      )
+      .toBe(true);
+    const band = (await idb<PositionRow>(page, 'positions'))[0]!.anchor!.rects[0]!;
+    expect(band.h).toBeGreaterThan(0); // a line band, not the page-level point
+    expect(band.y).toBeGreaterThan(0.36); // the first line whose top is at/below the slot (its band may start just above)
+    expect(band.y).toBeLessThan(0.45);
+
+    await page.reload();
+    await expect(page.locator('.page[data-page-number="3"] .mg-resume')).toBeAttached(); // left-edge triangle
+    await expect.poll(() => slot(page)).toMatchObject({ page: 3 });
+    expect((await slot(page))!.frac).toBeCloseTo(band.y, 2); // the line sits at the reading slot
+    await expect(page.locator('.mg-resume')).toHaveCount(0, { timeout: 4000 }); // gone after 2 s
   });
 
   test('going hidden saves immediately (tab switch, app backgrounded)', async ({ page }) => {

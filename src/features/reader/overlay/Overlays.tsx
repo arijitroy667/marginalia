@@ -30,6 +30,7 @@ export function Overlays({ ready, getViewer, container, pdf, documentId, docHash
   const hover = useHoverBand(ready, getViewer, container, pdf, docHash);
   const selection = useReaderStore((s) => s.selection);
   const flash = useReaderStore((s) => s.flash);
+  const resume = useReaderStore((s) => s.resume);
   const [textless, setTextless] = useState<ReadonlySet<number>>(new Set());
   const annotations = useLiveQuery(
     () => db.annotations.where('documentId').equals(documentId).filter((a) => a.deletedAt === null).toArray(),
@@ -62,6 +63,7 @@ export function Overlays({ ready, getViewer, container, pdf, documentId, docHash
       hover={hover?.page === page && selection?.page !== page ? hover.band : undefined}
       selected={selection?.page === page ? selection.anchor.rects : undefined}
       flash={flash?.page === page ? flash : undefined}
+      resume={resume?.anchor.page === page ? resume.anchor : undefined}
       markers={(byPage.get(`bookmark:${page}`) ?? []).map((b) => ({ key: b.id, anchor: b.anchor, node: <BookmarkMarker row={b} /> }))}
       banner={textless.has(page) ? en.reader.noTextLayer : undefined}
     />

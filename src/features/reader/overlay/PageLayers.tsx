@@ -13,12 +13,14 @@ export interface PageOverlayProps {
   hover?: NRect | undefined;
   selected?: NRect[] | undefined;
   flash?: { rects: NRect[]; id: number } | undefined;
+  resume?: Anchor | undefined;
   markers?: { key: string; anchor: Anchor; node: React.ReactNode }[];
   banner?: string | undefined;
 }
 
 /** Highlights + hover/selection bands under the text layer; gutter markers above it (PRD §8.4, §10.4). */
-export function PageLayers({ hosts, rotation, highlights, hover, selected, flash, markers = [], banner }: PageOverlayProps) {
+export function PageLayers({ hosts, rotation, highlights, hover, selected, flash, resume, markers = [], banner }: PageOverlayProps) {
+  const displayY = (a: Anchor) => fromCanonical({ x: 0.5, y: markerY(a), w: 0, h: 0 }, rotation).y; // anchor's vertical centre on screen
   return (
     <>
       {createPortal(
@@ -35,14 +37,13 @@ export function PageLayers({ hosts, rotation, highlights, hover, selected, flash
         hosts.under,
       )}
       {banner && createPortal(<p className="mg-banner">{banner}</p>, hosts.over)}
+      {resume && createPortal(<div className="mg-resume" aria-hidden="true" style={{ top: `${displayY(resume) * 100}%` }} />, hosts.over)}
       {markers.length > 0 &&
         createPortal(
           <div className="mg-gutter">
             {markers.map((m) => {
-              // marker at the anchor's vertical centre, in the displayed (rotated) page box
-              const top = fromCanonical({ x: 0.5, y: markerY(m.anchor), w: 0, h: 0 }, rotation).y;
               return (
-                <div key={m.key} className="mg-marker" style={{ top: `${top * 100}%` }}>
+                <div key={m.key} className="mg-marker" style={{ top: `${displayY(m.anchor) * 100}%` }}>
                   {m.node}
                 </div>
               );

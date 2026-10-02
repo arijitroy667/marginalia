@@ -1,16 +1,56 @@
 /**
- * Line-level navigation shared by bookmarks (T-205) and resume (T-206): the reading line, jumps that flash
- * their target (PRD §10.4), and previous/next bookmark (FR-BKM-03).
+ * Line-level navigation: the reading slot and reading line (PRD §5), resume restore (FR-BKM-04), jumps that
+ * flash their target (§10.4), and previous/next bookmark (FR-BKM-03).
  */
 import { anchorFromLine, pageAnchor } from '../../core/anchors/anchor';
-import { fromCanonical } from '../../core/anchors/geometry';
+import { fromCanonical, toCanonical } from '../../core/anchors/geometry';
 import type { Anchor } from '../../core/anchors/types';
 import type { AnnotationRow } from '../../core/db/models';
 import { getPageLines } from './lines/pageLines';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
 import { pageViewAt, type PdfViewer } from './pdf/viewer';
 import { useReaderStore } from './store';
-import { READING_INSET_PX, readingPoint, scrollToPoint } from './useResume';
+
+/** Default reading-slot inset below the scroller's top edge; overlay chrome adds its height (PRD §5). */
+export const READING_INSET_PX = 8;
+
+export interface ReadingPoint {
+  page: number;
+  x: number;
+  y: number;
+  progress: number;
+}
+
+/** Canonical point under the reading slot, or null if no page is there. */
+export function readingPoint(v: PdfViewer, el: HTMLElement, inset = READING_INSET_PX): ReadingPoint | null {
+  const slot = el.getBoundingClientRect().top + inset;
+  const n = v.pagesCount;
+  const rect = (i: number) => pageViewAt(v, i)?.div.getBoundingClientRect();
+  // binary search for the first page whose bottom is at/below the slot: independent of PDF.js's
+  // currentPageNumber, which lags behind programmatic scrolls (vertical scroll mode)
+  let lo = 0;
+  let hi = n - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if ((rect(mid)?.bottom ?? Infinity) < slot) lo = mid + 1;
+    else hi = mid;
+  }
+  const r = rect(lo);
+  if (!r || r.bottom < slot) return null;
+  const frac = Math.min(1, Math.max(0, (slot - r.top) / r.height)); // in the gap above a page: its top
+  const c = toCanonical({ x: 0.5, y: frac, w: 0, h: 0 }, v.pagesRotation);
+  const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+  return { page: lo + 1, x: c.x, y: c.y, progress: atEnd ? 1 : Math.min(1, (lo + frac) / n) };
+}
+
+/** Scrolls so the canonical point (page, x, y) sits at the reading slot. */
+export function scrollToPoint(v: PdfViewer, el: HTMLElement, page: number, y: number, x = 0.5, inset = READING_INSET_PX): void {
+  const pv = pageViewAt(v, page - 1);
+  if (!pv) return;
+  const d = fromCanonical({ x, y, w: 0, h: 0 }, v.pagesRotation);
+  const r = pv.div.getBoundingClientRect();
+  el.scrollTop += r.top - el.getBoundingClientRect().top + d.y * r.height - inset;
+}
 
 export interface LineTarget {
   anchor: Anchor;

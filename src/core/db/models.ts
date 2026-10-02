@@ -4,6 +4,7 @@
  * Refinements mirror the SQL constraints so invalid rows never reach the outbox.
  */
 import { z } from 'zod';
+import { PALETTE_MAX } from '../../config';
 import type { Anchor, NRect } from '../anchors/types';
 
 const unit = z.number().min(-0.001).max(1.001); // tolerate float rounding at page edges
@@ -95,7 +96,7 @@ export const SettingsSchema = z.looseObject({
   palette: z
     .array(PaletteEntrySchema)
     .min(1)
-    .max(8)
+    .max(PALETTE_MAX)
     .refine((p) => new Set(p.map((e) => e.id)).size === p.length, 'palette ids must be unique')
     .default(() => DEFAULT_PALETTE.map((e) => ({ ...e }))),
 });

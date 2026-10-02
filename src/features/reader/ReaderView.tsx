@@ -14,7 +14,7 @@ import { ThemeMenu } from '../theme/ThemeMenu';
 import { clearHistory, redo, undo } from './commands';
 import { FindBar } from './FindBar';
 import { applyColour, deleteOnSelection, LineActions, quickBookmark } from './LineActions';
-import { adjacentBookmark, jumpToAnchor, readingLine } from './navigation';
+import { adjacentBookmark, jumpToAnchor, READING_INSET_PX, readingLine, scrollToPoint } from './navigation';
 import { Overlays } from './overlay/Overlays';
 import { ensureVisible, moveCursor, useLineTap, useNativeSelection } from './selection/useLineSelection';
 import { useReaderStore } from './store';
@@ -24,7 +24,7 @@ import type { PDFDocumentProxy } from './pdf/pdfjs';
 import { createViewer, ZOOM_MAX, ZOOM_MIN, type PdfViewer, type Viewer } from './pdf/viewer';
 import type { OutlineItem } from './sidebar/Outline';
 import { Sidebar } from './sidebar/Sidebar';
-import { READING_INSET_PX, scrollToPoint, useResume } from './useResume';
+import { useResume } from './useResume';
 
 const PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 const clamp = (s: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s));
@@ -250,7 +250,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   useNativeSelection(ready, getViewer, container, pdf, row.contentHash, lastPointer);
   usePinch(ready, getViewer, container);
   useAutoHideChrome(compact && ready, container, setChrome);
-  useResume({ pagesReady, getViewer, getInset, container, documentId: row.id });
+  useResume({ pagesReady, getViewer, getInset, container, documentId: row.id, pdf, docHash: row.contentHash });
 
   // PDFViewer does not watch its container: re-fit fit-width/fit-page when the viewer area resizes
   useEffect(() => {

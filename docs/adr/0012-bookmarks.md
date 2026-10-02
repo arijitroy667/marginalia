@@ -24,5 +24,8 @@
 
 ## Consequences
 
-- T-206 reuses `readingLine` for line-level resume; T-207 adds note markers to the same gutter lane (markers on
+- T-206 reuses `readingLine` for line-level resume: after 1 s of scroll idle the reading line's anchor (band +
+  quote) is saved; hiding the tab or leaving before that resolves saves the point under the slot (zero-size rect),
+  so nothing is lost. Restore puts the band's top at the slot (the same line is again the reading line) and shows a
+  left-edge triangle for 2 s. T-207 adds note markers to the same gutter lane (markers on
   one line will stack, grouped with `sameLine`); T-208 folds the Bookmarks tab into the annotation panel.
