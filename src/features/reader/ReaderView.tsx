@@ -19,6 +19,7 @@ type PdfViewer = Viewer['viewer'];
 // PDF.js viewer is external mutable state: writes go through these helpers, not component scope
 const goToPage = (v: PdfViewer, n: number) => void (v.currentPageNumber = n);
 const setZoom = (v: PdfViewer, value: string) => void (v.currentScaleValue = value);
+const rotate = (v: PdfViewer) => void (v.pagesRotation = (v.pagesRotation + 90) % 360); // view only (FR-RDR-09)
 
 const SIDEBAR = ['open', 'closed'] as const;
 const PRESET_VALUES = new Set(['page-width', 'page-fit', 'auto']);
@@ -47,7 +48,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   useEffect(() => {
     let created: Viewer | undefined;
     let cancelled = false;
-    void createViewer(container.current!, pdf).then((v) => {
+    void createViewer(container.current!, pdf, row.contentHash).then((v) => {
       if (cancelled) return v.destroy();
       created = v;
       v.eventBus.on('pagesinit', () => {
@@ -64,7 +65,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
       viewerRef.current = null;
       created?.destroy();
     };
-  }, [pdf]);
+  }, [pdf, row.contentHash]);
 
   // Keyboard (FR-RDR-02/03). Single keys respect the text-field/IME guard (FR-KEY-02).
   useEffect(() => {
@@ -227,6 +228,9 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
           </select>
           <button className={btn} aria-label={en.reader.zoomIn} onClick={() => viewerRef.current && zoomStep(viewerRef.current.viewer, 1)}>
             +
+          </button>
+          <button className={btn} aria-label={en.reader.rotate} onClick={() => viewerRef.current && rotate(viewerRef.current.viewer)}>
+            ⟳
           </button>
         </div>
         <button className={btn} aria-label={en.reader.find} aria-expanded={finding} onClick={() => setFinding((f) => !f)}>

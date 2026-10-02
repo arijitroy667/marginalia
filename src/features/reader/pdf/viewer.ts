@@ -9,9 +9,10 @@ export const ZOOM_MAX = 4;
 
 export type Viewer = Awaited<ReturnType<typeof createViewer>>;
 
-export async function createViewer(container: HTMLDivElement, doc: PDFDocumentProxy) {
+/** `fingerprint` keys browser-history entries to this document: our SHA-256, not PDF.js's weak one (FR-LIB-02). */
+export async function createViewer(container: HTMLDivElement, doc: PDFDocumentProxy, fingerprint: string) {
   // imported after pdfjs.ts has set globalThis.pdfjsLib
-  const { EventBus, LinkTarget, PDFFindController, PDFLinkService, PDFViewer } = await import('pdfjs-dist/web/pdf_viewer.mjs');
+  const { EventBus, LinkTarget, PDFFindController, PDFHistory, PDFLinkService, PDFViewer } = await import('pdfjs-dist/web/pdf_viewer.mjs');
   const coarse = window.matchMedia('(pointer: coarse)').matches;
   const eventBus = new EventBus();
   const linkService = new PDFLinkService({ eventBus, externalLinkTarget: LinkTarget.BLANK, externalLinkRel: 'noopener noreferrer' });
@@ -27,6 +28,10 @@ export async function createViewer(container: HTMLDivElement, doc: PDFDocumentPr
     imagesRightClickMinSize: 32, // image rects for the dark-theme image restore (ADR 0002)
   });
   linkService.setViewer(viewer);
+  // internal link jumps push browser-history entries; Back returns to the prior position (FR-RDR-08)
+  const pdfHistory = new PDFHistory({ linkService, eventBus });
+  linkService.setHistory(pdfHistory);
+  eventBus.on('pagesinit', () => pdfHistory.initialize({ fingerprint, updateUrl: false }));
   viewer.setDocument(doc);
   linkService.setDocument(doc, null);
   findController.setDocument(doc);
@@ -36,6 +41,7 @@ export async function createViewer(container: HTMLDivElement, doc: PDFDocumentPr
     linkService,
     findController,
     destroy() {
+      pdfHistory.reset();
       findController.setDocument(null as unknown as PDFDocumentProxy);
       viewer.setDocument(null as unknown as PDFDocumentProxy);
       linkService.setDocument(null, null);

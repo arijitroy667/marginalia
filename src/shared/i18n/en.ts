@@ -69,6 +69,7 @@ export const en = {
     pageOf: (n: number) => `of ${n}`,
     noSuchPage: (input: string, n: number) => `There is no page ${q(input)}. This document has ${n} pages.`,
     zoomIn: 'Zoom in',
+    rotate: 'Rotate clockwise',
     zoomOut: 'Zoom out',
     zoom: 'Zoom',
     fitWidth: 'Fit width',
