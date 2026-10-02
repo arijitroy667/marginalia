@@ -52,7 +52,7 @@ export function Toaster() {
           </Toast.Close>
         </Toast.Root>
       ))}
-      <Toast.Viewport className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-50 flex w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-2 outline-none" />
+      <Toast.Viewport className="mg-toasts fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-50 flex w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-2 outline-none" />
     </Toast.Provider>
   );
 }

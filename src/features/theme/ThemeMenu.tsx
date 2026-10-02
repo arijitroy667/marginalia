@@ -1,4 +1,5 @@
 import { Popover } from 'radix-ui';
+import type { Ref } from 'react';
 import { en } from '../../shared/i18n/en';
 import { ThemeIcon } from '../../shared/ui/icons';
 import { updateSettings, useSettings } from '../settings/useSettings';
@@ -12,12 +13,13 @@ const OPTIONS: ThemeId[] = ['system', 'light', 'warm', 'dark'];
  * uncontrolled (the content remounts on every open): settings are written asynchronously, and a controlled slider
  * would snap back mid-drag.
  */
-export function ThemeMenu({ reader = false }: { reader?: boolean }) {
+export function ThemeMenu({ reader = false, triggerRef }: { reader?: boolean; triggerRef?: Ref<HTMLButtonElement> }) {
   const { theme, warmth, invertImages } = useSettings();
   const row = 'flex min-h-11 items-center gap-2 rounded px-2 hover:bg-ui-bg';
   return (
     <Popover.Root>
       <Popover.Trigger
+        ref={triggerRef}
         aria-label={en.theme.label}
         className="grid min-h-11 min-w-11 place-items-center rounded-md text-ui-fg hover:bg-ui-bg"
       >

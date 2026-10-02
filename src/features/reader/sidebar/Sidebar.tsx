@@ -7,7 +7,8 @@ import { Annotations } from './Annotations';
 import { Outline, type OutlineItem } from './Outline';
 import { revokeThumbnails, Thumbnails } from './Thumbnails';
 
-const tab = 'min-h-11 flex-1 border-b-2 border-transparent px-3 text-sm text-muted data-[state=active]:border-accent data-[state=active]:font-medium data-[state=active]:text-ui-fg';
+const tab =
+  'min-h-11 flex-1 border-b-2 border-transparent px-3 text-sm text-muted data-[state=active]:border-accent data-[state=active]:font-medium data-[state=active]:text-ui-fg';
 
 interface Props {
   pdf: PDFDocumentProxy;
@@ -16,10 +17,12 @@ interface Props {
   onPage: (n: number) => void;
   onOutline: (item: OutlineItem) => void;
   onJump: (anchor: Anchor) => void;
+  tab: string;
+  onTab: (tab: string) => void;
 }
 
 /** Pages (thumbnails), Contents (outline) and the annotation panel (FR-RDR-04/05, FR-PNL-01). */
-export function Sidebar({ pdf, documentId, current, onPage, onOutline, onJump }: Props) {
+export function Sidebar({ pdf, documentId, current, onPage, onOutline, onJump, tab: active, onTab }: Props) {
   const [outline, setOutline] = useState<OutlineItem[]>([]);
   const [aspect, setAspect] = useState(1.3);
 
@@ -37,7 +40,7 @@ export function Sidebar({ pdf, documentId, current, onPage, onOutline, onJump }:
   }, [pdf]);
 
   return (
-    <Tabs.Root defaultValue="pages" className="flex h-full flex-col bg-surface">
+    <Tabs.Root value={active} onValueChange={onTab} className="flex h-full flex-col bg-surface">
       <Tabs.List aria-label={en.reader.sidebar} className="flex border-b border-line">
         <Tabs.Trigger value="pages" className={tab}>
           {en.reader.pages}

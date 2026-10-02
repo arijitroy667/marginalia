@@ -6,16 +6,18 @@ import { annotationsRepo } from '../../core/db/repos';
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery';
 import { usePref } from '../../shared/hooks/usePref';
 import { en } from '../../shared/i18n/en';
-import { canHandleSingleKey, isPrimaryChord, isTypingTarget } from '../../shared/utils/keys';
 import { BookmarkIcon } from '../../shared/ui/icons';
 import { toast } from '../../shared/ui/toast';
-import { useSettings } from '../settings/useSettings';
+import { updateSettings, useSettings } from '../settings/useSettings';
 import { PageFilters } from '../theme/PageFilters';
 import { ThemeMenu } from '../theme/ThemeMenu';
 import { warmthColor } from '../theme/tokens';
 import { useResolvedTheme } from '../theme/useTheme';
 import { clearHistory, redo, undo } from './commands';
+import { CheatSheet } from './CheatSheet';
 import { FindBar } from './FindBar';
+import { route, type Action } from './keymap';
+import { SheetHandle } from './SheetHandle';
 import { applyColour, deleteOnSelection, LineActions, openNoteEditor, quickBookmark } from './LineActions';
 import { adjacentBookmark, jumpToAnchor, READING_INSET_PX, readingLine, scrollToPoint } from './navigation';
 import { Overlays } from './overlay/Overlays';
@@ -38,6 +40,7 @@ const setZoom = (v: PdfViewer, value: string) => void (v.currentScaleValue = val
 const rotate = (v: PdfViewer) => void (v.pagesRotation = (v.pagesRotation + 90) % 360); // view only (FR-RDR-09)
 
 const SIDEBAR = ['open', 'closed'] as const;
+const CYCLE = ['light', 'warm', 'dark'] as const; // Shift+T
 const COLOUR_SLOTS = ['1', '2', '3', '4', '5', '6', '7', '8'] as const; // active highlight colour: device-local UI pref
 const PRESET_VALUES = new Set(['page-width', 'page-fit', 'auto']);
 
@@ -48,7 +51,11 @@ function zoomStep(v: PdfViewer, dir: 1 | -1) {
 }
 
 /** Phones: hide bars on scroll down, show on scroll up / near the top (§10.3); blank taps toggle via useLineTap. */
-function useAutoHideChrome(enabled: boolean, container: RefObject<HTMLDivElement | null>, setChrome: (fn: (c: boolean) => boolean) => void) {
+function useAutoHideChrome(
+  enabled: boolean,
+  container: RefObject<HTMLDivElement | null>,
+  setChrome: (fn: (c: boolean) => boolean) => void,
+) {
   useEffect(() => {
     const el = container.current;
     if (!enabled || !el) return;
@@ -85,6 +92,10 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const [finding, setFinding] = useState(false);
   const [chrome, setChrome] = useState(true);
   const [rotation, setRotation] = useState(0);
+  const [help, setHelp] = useState(false); // ? cheat sheet (FR-KEY-03)
+  const [sideTab, setSideTab] = useState('pages');
+  const [sheetFull, setSheetFull] = useState(false); // phones: panel bottom sheet height
+  const themeTrigger = useRef<HTMLButtonElement>(null);
   const compact = useMediaQuery('(max-width: 767px)');
   const compactRef = useRef(compact);
   const lastPointer = useRef<PointerKind>('mouse');
@@ -99,7 +110,9 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   // reading slot = viewport top + chrome overlaying the page + 8 px (PRD §5); read from layout, so it stays stable
   const getInset = useCallback(() => {
     const bar = topBar.current;
-    return bar && getComputedStyle(bar).position === 'absolute' ? bar.offsetHeight + READING_INSET_PX : READING_INSET_PX;
+    return bar && getComputedStyle(bar).position === 'absolute'
+      ? bar.offsetHeight + READING_INSET_PX
+      : READING_INSET_PX;
   }, []);
 
   useEffect(() => {
@@ -114,7 +127,9 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
         setPagesReady(true);
       });
       v.eventBus.on('pagechanging', (e: { pageNumber: number }) => setPage(e.pageNumber));
-      v.eventBus.on('scalechanging', (e: { scale: number; presetValue?: string }) => setScale({ value: e.scale, preset: e.presetValue }));
+      v.eventBus.on('scalechanging', (e: { scale: number; presetValue?: string }) =>
+        setScale({ value: e.scale, preset: e.presetValue }),
+      );
       v.eventBus.on('rotationchanging', (e: { pagesRotation: number }) => setRotation(e.pagesRotation));
       viewerRef.current = v;
       setReady(true);
@@ -147,88 +162,126 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     [row.id, getInset],
   );
 
-  // Keyboard (FR-RDR-02/03). Single keys respect the text-field/IME guard (FR-KEY-02).
+  // Keyboard: every shortcut goes through one router (FR-KEY-01/02, keymap.ts). `run` returns false when the key
+  // does not apply right now (e.g. arrows without a line cursor), so the browser default still happens.
   useEffect(() => {
     const v = viewerRef.current?.viewer;
     if (!ready || !v) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (isPrimaryChord(e)) {
-        if ((e.key === 'z' || e.key === 'Z') && !isTypingTarget(e.target)) {
-          // annotation undo/redo (FR-KEY-06); text fields keep their own undo
-          e.preventDefault();
-          void (e.shiftKey ? redo() : undo()).catch(() => toast(en.reader.undoFailed));
-          return;
+    const run = (action: Action, key: string): boolean => {
+      const store = useReaderStore.getState();
+      const sel = store.selection;
+      switch (action) {
+        case 'clear':
+          if (!sel) return false;
+          store.select(null);
+          window.getSelection()?.removeAllRanges();
+          return true;
+        case 'lineDown':
+        case 'lineUp':
+          if (sel?.kind !== 'line') return false; // with no cursor, arrows keep scrolling natively (FR-LIN-03)
+          void moveCursor(pdf, row.contentHash, action === 'lineDown' ? 1 : -1).then((next) => {
+            if (!next || !container.current) return;
+            useReaderStore.getState().select(next);
+            ensureVisible(v, container.current, next);
+          });
+          return true;
+        case 'highlight':
+          if (!sel) return false;
+          void applyColour(row.id, active, palette, setActive);
+          return true;
+        case 'colour': {
+          const swatch = palette[Number(key) - 1]; // the Nth swatch (ADR 0011)
+          if (!swatch) return false;
+          if (sel) void applyColour(row.id, swatch.id, palette, setActive);
+          else {
+            setActive(swatch.id);
+            toast(en.reader.activeColour(swatch.label));
+          }
+          return true;
         }
-        if (e.key === '=' || e.key === '+') zoomStep(v, 1);
-        else if (e.key === '-') zoomStep(v, -1);
-        else if (e.key === '0') v.currentScaleValue = 'page-width';
-        else if (e.key === 'f' || e.key === 'F') setFinding(true); // our search, not the browser's (FR-RDR-06)
-        else return;
-        e.preventDefault(); // instead of browser page zoom
-        return;
+        case 'note':
+          if (!sel) return false;
+          void openNoteEditor(row.id); // handled, so the N never lands in the textarea
+          return true;
+        case 'remove':
+          if (!sel) return false;
+          void deleteOnSelection(row.id);
+          return true;
+        case 'bookmark':
+          void bookmarkHere();
+          return true;
+        case 'prevBookmark':
+        case 'nextBookmark':
+          void stepBookmark(action === 'nextBookmark' ? 1 : -1);
+          return true;
+        case 'undo':
+        case 'redo':
+          void (action === 'redo' ? redo() : undo()).catch(() => toast(en.reader.undoFailed));
+          return true;
+        case 'find':
+          setFinding(true); // ours, not the browser's (FR-RDR-06)
+          return true;
+        case 'goToPage':
+          pageInput.current?.focus();
+          pageInput.current?.select();
+          return true;
+        case 'firstPage':
+          v.currentPageNumber = 1;
+          return true;
+        case 'lastPage':
+          v.currentPageNumber = v.pagesCount;
+          return true;
+        case 'nextPage':
+          v.nextPage();
+          return true;
+        case 'prevPage':
+          v.previousPage();
+          return true;
+        case 'sidebar':
+          setSidebar((s) => (s === 'open' ? 'closed' : 'open'));
+          return true;
+        case 'themeMenu':
+          themeTrigger.current?.click();
+          return true;
+        case 'cycleTheme': {
+          const next = CYCLE[(CYCLE.indexOf(theme) + 1) % CYCLE.length]!;
+          void updateSettings({ theme: next });
+          toast(en.theme.now(en.theme[next]));
+          return true;
+        }
+        case 'zoomIn':
+        case 'zoomOut':
+          zoomStep(v, action === 'zoomIn' ? 1 : -1); // instead of the browser's page zoom
+          return true;
+        case 'zoomReset':
+          v.currentScaleValue = 'page-width';
+          return true;
+        case 'help':
+          setHelp((h) => !h);
+          return true;
       }
-      if (!canHandleSingleKey(e)) return;
-      const sel = useReaderStore.getState().selection;
-      if (sel && e.key === 'Escape') {
-        useReaderStore.getState().select(null);
-        window.getSelection()?.removeAllRanges();
-        e.preventDefault();
-        return;
-      }
-      // highlights (FR-HLT-01/04, Appendix A): H = active colour; 1-8 = Nth swatch, or set the active colour
-      const swatch = /^[1-8]$/.test(e.key) ? palette[Number(e.key) - 1] : undefined;
-      if (sel && (e.key === 'h' || e.key === 'H' || swatch)) {
-        e.preventDefault();
-        void applyColour(row.id, swatch?.id ?? active, palette, setActive);
-        return;
-      }
-      if (swatch) {
-        e.preventDefault();
-        setActive(swatch.id);
-        toast(en.reader.activeColour(swatch.label));
-        return;
-      }
-      if (sel && (e.key === 'n' || e.key === 'N')) {
-        e.preventDefault(); // or the N would land in the note's textarea
-        void openNoteEditor(row.id);
-        return;
-      }
-      if (sel && (e.key === 'Delete' || e.key === 'Backspace')) {
-        e.preventDefault();
-        void deleteOnSelection(row.id);
-        return;
-      }
-      if (e.key === 'b' || e.key === 'B' || e.key === '[' || e.key === ']') {
-        e.preventDefault();
-        void (e.key === '[' || e.key === ']' ? stepBookmark(e.key === ']' ? 1 : -1) : bookmarkHere());
-        return;
-      }
-      const dir = { ArrowDown: 1, j: 1, J: 1, ArrowUp: -1, k: -1, K: -1 }[e.key] as 1 | -1 | undefined;
-      if (sel?.kind === 'line' && dir) {
-        // line cursor (FR-LIN-03); with no cursor, arrows keep scrolling natively
-        e.preventDefault();
-        void moveCursor(pdf, row.contentHash, dir).then((next) => {
-          if (!next || !container.current) return;
-          useReaderStore.getState().select(next);
-          ensureVisible(v, container.current, next);
-        });
-        return;
-      }
-      if (e.key === 'g' || e.key === 'G') {
-        pageInput.current?.focus();
-        pageInput.current?.select();
-      } else if (e.key === 'Home') v.currentPageNumber = 1;
-      else if (e.key === 'End') v.currentPageNumber = v.pagesCount;
-      else if (e.key === 'PageDown') v.nextPage();
-      else if (e.key === 'PageUp') v.previousPage();
-      else if (e.key === 's' || e.key === 'S') setSidebar((s) => (s === 'open' ? 'closed' : 'open'));
-      else if (e.key === '/') setFinding(true);
-      else return;
-      e.preventDefault();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      const hit = route(e);
+      if (!hit || (help && hit.action !== 'help')) return; // the cheat sheet is modal
+      if (run(hit.action, hit.key)) e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ready, setSidebar, pdf, row.contentHash, row.id, palette, active, setActive, bookmarkHere, stepBookmark]);
+  }, [
+    ready,
+    setSidebar,
+    pdf,
+    row.contentHash,
+    row.id,
+    palette,
+    active,
+    setActive,
+    bookmarkHere,
+    stepBookmark,
+    theme,
+    help,
+  ]);
 
   // Ctrl/Cmd + wheel (and trackpad pinch) zooms around the pointer; PDF.js rounds scale to 0.01, so accumulate.
   useEffect(() => {
@@ -308,7 +361,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     setDraft(null);
   };
 
-  const zoomValue = scale.preset ?? (PRESETS.find((p) => Math.abs(p - scale.value) < 0.005)?.toString() ?? 'custom');
+  const zoomValue = scale.preset ?? PRESETS.find((p) => Math.abs(p - scale.value) < 0.005)?.toString() ?? 'custom';
   const btn = 'grid min-h-11 min-w-11 place-items-center rounded-md text-ui-fg hover:bg-ui-bg disabled:opacity-40';
   const showChrome = !compact || chrome || finding || sidebar === 'open';
 
@@ -349,20 +402,28 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
       <span className="whitespace-nowrap text-muted">{en.reader.pageOf(pages)}</span>
     </span>
   );
-  const slide = (hidden: string) => `transition-transform duration-200 motion-reduce:transition-none ${showChrome ? '' : hidden}`;
+  const slide = (hidden: string) =>
+    `transition-transform duration-200 motion-reduce:transition-none ${showChrome ? '' : hidden}`;
 
   return (
     <div className={`relative flex h-dvh flex-col bg-ui-bg ${compact ? 'reader-compact' : ''}`}>
       <PageFilters />
       {/* focus inside a hidden bar (keyboard, screen reader) brings the chrome back */}
-      <div ref={topBar} onFocus={() => setChrome(true)} className={compact ? `absolute inset-x-0 top-0 z-10 ${slide('-translate-y-full')}` : ''}>
+      <div
+        ref={topBar}
+        onFocus={() => setChrome(true)}
+        className={compact ? `absolute inset-x-0 top-0 z-10 ${slide('-translate-y-full')}` : ''}
+      >
         <header
           role="toolbar"
           aria-label={en.reader.toolbar}
           className="flex items-center gap-1 border-b border-line bg-surface px-2 pt-[env(safe-area-inset-top)] text-sm"
         >
           {!compact && sidebarToggle}
-          <Link to="/" className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-ui-fg hover:bg-ui-bg">
+          <Link
+            to="/"
+            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-ui-fg hover:bg-ui-bg"
+          >
             <span aria-hidden="true">←</span>
             <span className="hidden sm:inline">{en.reader.back}</span>
             <span className="sr-only sm:hidden">{en.reader.back}</span>
@@ -370,14 +431,28 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
           <h1 className="mx-2 min-w-0 flex-1 truncate font-medium">{row.title}</h1>
           {!compact && (
             <>
-              <button className={btn} aria-label={en.reader.prevPage} disabled={page <= 1} onClick={() => viewerRef.current?.viewer.previousPage()}>
+              <button
+                className={btn}
+                aria-label={en.reader.prevPage}
+                disabled={page <= 1}
+                onClick={() => viewerRef.current?.viewer.previousPage()}
+              >
                 ‹
               </button>
               {pageField}
-              <button className={btn} aria-label={en.reader.nextPage} disabled={page >= pages} onClick={() => viewerRef.current?.viewer.nextPage()}>
+              <button
+                className={btn}
+                aria-label={en.reader.nextPage}
+                disabled={page >= pages}
+                onClick={() => viewerRef.current?.viewer.nextPage()}
+              >
                 ›
               </button>
-              <button className={btn} aria-label={en.reader.zoomOut} onClick={() => viewerRef.current && zoomStep(viewerRef.current.viewer, -1)}>
+              <button
+                className={btn}
+                aria-label={en.reader.zoomOut}
+                onClick={() => viewerRef.current && zoomStep(viewerRef.current.viewer, -1)}
+              >
                 −
               </button>
               <select
@@ -396,34 +471,69 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
                     {en.reader.percent(Math.round(p * 100))}
                   </option>
                 ))}
-                {zoomValue === 'custom' && <option value="custom">{en.reader.percent(Math.round(scale.value * 100))}</option>}
+                {zoomValue === 'custom' && (
+                  <option value="custom">{en.reader.percent(Math.round(scale.value * 100))}</option>
+                )}
               </select>
-              <button className={btn} aria-label={en.reader.zoomIn} onClick={() => viewerRef.current && zoomStep(viewerRef.current.viewer, 1)}>
+              <button
+                className={btn}
+                aria-label={en.reader.zoomIn}
+                onClick={() => viewerRef.current && zoomStep(viewerRef.current.viewer, 1)}
+              >
                 +
               </button>
-              <button className={btn} aria-label={en.reader.rotate} onClick={() => viewerRef.current && rotate(viewerRef.current.viewer)}>
+              <button
+                className={btn}
+                aria-label={en.reader.rotate}
+                onClick={() => viewerRef.current && rotate(viewerRef.current.viewer)}
+              >
                 ⟳
               </button>
             </>
           )}
-          <button className={btn} aria-label={en.reader.find} aria-expanded={finding} onClick={() => setFinding((f) => !f)}>
+          <button
+            className={btn}
+            aria-label={en.reader.find}
+            aria-expanded={finding}
+            onClick={() => setFinding((f) => !f)}
+          >
             ⌕
           </button>
-          {!compact && <ThemeMenu reader />}
+          {!compact && <ThemeMenu reader triggerRef={themeTrigger} />}
         </header>
         {finding && ready && <FindBar getViewer={getViewer} onClose={() => setFinding(false)} />}
       </div>
       <div className="relative flex min-h-0 flex-1">
         {sidebar === 'open' && (
           <>
-            {/* phones: drawer over the page with a backdrop; md+: docked column */}
-            <button aria-label={en.common.close} className="fixed inset-0 z-20 bg-black/40 md:hidden" onClick={() => setSidebar('closed')} />
+            {/* phones: bottom sheet over the page with a backdrop (§10.3, Appendix A); md+: docked column */}
+            <button
+              aria-label={en.common.close}
+              className="fixed inset-0 z-20 bg-black/40 md:hidden"
+              onClick={() => setSidebar('closed')}
+            />
             <aside
               id="reader-sidebar"
               aria-label={en.reader.sidebar}
-              className="fixed inset-y-0 left-0 z-30 w-[min(20rem,85vw)] border-r border-line pt-[env(safe-area-inset-top)] md:static md:z-auto md:w-64 md:pt-0"
+              className={
+                compact
+                  ? `fixed inset-x-0 bottom-0 z-30 flex flex-col overflow-hidden rounded-t-2xl border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-2xl transition-[height] duration-200 motion-reduce:transition-none ${sheetFull ? 'h-[92dvh]' : 'h-[60dvh]'}`
+                  : 'w-64 border-r border-line'
+              }
             >
-              <Sidebar pdf={pdf} documentId={row.id} current={page} onPage={goToFromSidebar} onOutline={openOutline} onJump={jumpFromSidebar} />
+              {compact && <SheetHandle full={sheetFull} onFull={setSheetFull} onClose={() => setSidebar('closed')} />}
+              <div className="h-full min-h-0 flex-1">
+                <Sidebar
+                  pdf={pdf}
+                  documentId={row.id}
+                  current={page}
+                  onPage={goToFromSidebar}
+                  onOutline={openOutline}
+                  onJump={jumpFromSidebar}
+                  tab={sideTab}
+                  onTab={setSideTab}
+                />
+              </div>
             </aside>
           </>
         )}
@@ -441,7 +551,18 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
             documentId={row.id}
             docHash={row.contentHash}
             rotation={rotation}
-            toolbar={selection && <LineActions documentId={row.id} selection={selection} palette={palette} active={active} setActive={setActive} compact={compact} />}
+            toolbar={
+              selection && (
+                <LineActions
+                  documentId={row.id}
+                  selection={selection}
+                  palette={palette}
+                  active={active}
+                  setActive={setActive}
+                  compact={compact}
+                />
+              )
+            }
           />
         </div>
       </div>
@@ -450,7 +571,27 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
           role="toolbar"
           aria-label={en.reader.bottomBar}
           onFocus={() => setChrome(true)}
-          className={`absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-line bg-surface px-2 pb-[env(safe-area-inset-bottom)] text-sm ${slide('translate-y-full')}`}
+          // swipe up opens the annotation panel (Appendix A); the page field and scrubber keep their own drags.
+          // The release usually lands above the bar, so it is watched on window for this one gesture.
+          onPointerDown={(e) => {
+            if ((e.target as Element).closest('input')) return;
+            const y0 = e.clientY;
+            const gesture = new AbortController();
+            const opts = { once: true, signal: gesture.signal };
+            window.addEventListener('pointercancel', () => gesture.abort(), opts);
+            window.addEventListener(
+              'pointerup',
+              (u) => {
+                gesture.abort();
+                if (y0 - u.clientY > 40) {
+                  setSideTab('annotations');
+                  setSidebar('open');
+                }
+              },
+              opts,
+            );
+          }}
+          className={`absolute inset-x-0 bottom-0 z-10 flex touch-pan-x items-center gap-2 border-t border-line bg-surface px-2 pb-[env(safe-area-inset-bottom)] text-sm ${slide('translate-y-full')}`}
         >
           {pageField}
           <input
@@ -471,9 +612,10 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
             <BookmarkIcon />
           </button>
           {sidebarToggle}
-          <ThemeMenu reader />
+          <ThemeMenu reader triggerRef={themeTrigger} />
         </div>
       )}
+      <CheatSheet open={help} onOpenChange={setHelp} />
     </div>
   );
 }

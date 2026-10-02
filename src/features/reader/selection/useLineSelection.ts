@@ -16,10 +16,24 @@ import { useReaderStore, type Selection } from '../store';
 const INTERACTIVE = 'a, button, input, select, textarea, [role="button"], .annotationLayer a, .mg-toolbar, .mg-marker';
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
-export const lineSelection = (pl: PageLines, line: Line): Selection => ({ kind: 'line', page: pl.page, line, anchor: anchorFromLine(pl, line), text: line.text });
+export const lineSelection = (pl: PageLines, line: Line): Selection => ({
+  kind: 'line',
+  page: pl.page,
+  line,
+  anchor: anchorFromLine(pl, line),
+  text: line.text,
+});
 
 /** Tap/click selects the line under it; a tap on blank space clears the selection and calls onBlankTap. */
-export function useLineTap(ready: boolean, getViewer: () => Viewer | null, container: RefObject<HTMLDivElement | null>, pdf: PDFDocumentProxy, docHash: string, onBlankTap: () => void, lastPointer: { current: PointerKind }) {
+export function useLineTap(
+  ready: boolean,
+  getViewer: () => Viewer | null,
+  container: RefObject<HTMLDivElement | null>,
+  pdf: PDFDocumentProxy,
+  docHash: string,
+  onBlankTap: () => void,
+  lastPointer: { current: PointerKind },
+) {
   useEffect(() => {
     const el = container.current;
     const v = getViewer();
@@ -31,7 +45,10 @@ export function useLineTap(ready: boolean, getViewer: () => Viewer | null, conta
     };
     const onDown = (e: PointerEvent) => {
       lastPointer.current = e.pointerType as PointerKind;
-      down = e.isPrimary && !(e.target as Element).closest(INTERACTIVE) ? { x: e.clientX, y: e.clientY, t: e.timeStamp, kind: e.pointerType as PointerKind, max: 0 } : null;
+      down =
+        e.isPrimary && !(e.target as Element).closest(INTERACTIVE)
+          ? { x: e.clientX, y: e.clientY, t: e.timeStamp, kind: e.pointerType as PointerKind, max: 0 }
+          : null;
     };
     const onMove = (e: PointerEvent) => {
       if (down) down.max = Math.max(down.max, Math.hypot(e.clientX - down.x, e.clientY - down.y));
@@ -39,7 +56,8 @@ export function useLineTap(ready: boolean, getViewer: () => Viewer | null, conta
     const onUp = (e: PointerEvent) => {
       const d = down;
       down = null;
-      if (!d || classifyPointer(d.kind, d, { x: e.clientX, y: e.clientY, t: e.timeStamp }, d.max, e.detail) !== 'tap') return; // native selection
+      if (!d || classifyPointer(d.kind, d, { x: e.clientX, y: e.clientY, t: e.timeStamp }, d.max, e.detail) !== 'tap')
+        return; // native selection
       window.getSelection()?.removeAllRanges(); // stray 1-2 char selection from click jitter (ADR 0004)
       const p = pagePoint(e, v.viewer.pagesRotation);
       if (!p) return blank();
@@ -64,47 +82,80 @@ export function useLineTap(ready: boolean, getViewer: () => Viewer | null, conta
 }
 
 /** Native text selection -> one canonical rect per visual line on the selection's first page (ADR 0004). */
-export function useNativeSelection(ready: boolean, getViewer: () => Viewer | null, container: RefObject<HTMLDivElement | null>, pdf: PDFDocumentProxy, docHash: string, lastPointer: { current: PointerKind }) {
+export function useNativeSelection(
+  ready: boolean,
+  getViewer: () => Viewer | null,
+  container: RefObject<HTMLDivElement | null>,
+  pdf: PDFDocumentProxy,
+  docHash: string,
+  lastPointer: { current: PointerKind },
+) {
   useEffect(() => {
     const el = container.current;
     const v = getViewer();
     if (!ready || !el || !v) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let pressed = false; // mouse/pen drag in progress: publish its final range on release, never a partial one
+    const publish = () => {
+      const store = useReaderStore.getState();
+      const sel = document.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        if (store.selection?.kind === 'range') store.select(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      const start = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
+      const pageEl = start?.closest<HTMLElement>('.page[data-page-number]');
+      if (!pageEl || !el.contains(pageEl)) return;
+      const page = Number(pageEl.dataset.pageNumber);
+      const box = (pageEl.querySelector(':scope > .canvasWrapper') ?? pageEl).getBoundingClientRect();
+      const rot = v.viewer.pagesRotation;
+      const rects = [...range.getClientRects()]
+        .filter(
+          (r) =>
+            r.width > 0.5 && r.height > 0.5 && r.width < box.width * 0.99 && r.bottom > box.top && r.top < box.bottom,
+        )
+        .map((r) => {
+          const n = normalize({ left: r.left - box.left, top: r.top - box.top, width: r.width, height: r.height }, box);
+          const x = clamp01(n.x);
+          const y = clamp01(n.y);
+          return toCanonical({ x, y, w: clamp01(n.x + n.w) - x, h: clamp01(n.y + n.h) - y }, rot);
+        });
+      const lines = groupLineRects(rects);
+      if (!lines.length) return;
+      const text = sel.toString();
+      void getPageLines(pdf, docHash, page).then((pl) =>
+        store.select({
+          kind: 'range',
+          page,
+          anchor: anchorFromSelection(page, lines, text, pl?.text ?? ''),
+          text,
+          touch: lastPointer.current === 'touch',
+        }),
+      );
+    };
     const onChange = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => {
-        const store = useReaderStore.getState();
-        const sel = document.getSelection();
-        if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-          if (store.selection?.kind === 'range') store.select(null);
-          return;
-        }
-        const range = sel.getRangeAt(0);
-        const start = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
-        const pageEl = start?.closest<HTMLElement>('.page[data-page-number]');
-        if (!pageEl || !el.contains(pageEl)) return;
-        const page = Number(pageEl.dataset.pageNumber);
-        const box = (pageEl.querySelector(':scope > .canvasWrapper') ?? pageEl).getBoundingClientRect();
-        const rot = v.viewer.pagesRotation;
-        const rects = [...range.getClientRects()]
-          .filter((r) => r.width > 0.5 && r.height > 0.5 && r.width < box.width * 0.99 && r.bottom > box.top && r.top < box.bottom)
-          .map((r) => {
-            const n = normalize({ left: r.left - box.left, top: r.top - box.top, width: r.width, height: r.height }, box);
-            const x = clamp01(n.x);
-            const y = clamp01(n.y);
-            return toCanonical({ x, y, w: clamp01(n.x + n.w) - x, h: clamp01(n.y + n.h) - y }, rot);
-          });
-        const lines = groupLineRects(rects);
-        if (!lines.length) return;
-        const text = sel.toString();
-        void getPageLines(pdf, docHash, page).then((pl) =>
-          store.select({ kind: 'range', page, anchor: anchorFromSelection(page, lines, text, pl?.text ?? ''), text, touch: lastPointer.current === 'touch' }),
-        );
-      }, 150);
+      if (!pressed) timer = setTimeout(publish, 150); // touch handles: settle first
     };
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch' && e.button === 0) pressed = true;
+    };
+    const onUp = () => {
+      if (!pressed) return;
+      pressed = false;
+      clearTimeout(timer);
+      publish();
+    };
+    el.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointerup', onUp); // the release may land outside the reader
+    window.addEventListener('pointercancel', onUp);
     document.addEventListener('selectionchange', onChange);
     return () => {
       clearTimeout(timer);
+      el.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
       document.removeEventListener('selectionchange', onChange);
     };
   }, [ready, getViewer, container, pdf, docHash, lastPointer]);
