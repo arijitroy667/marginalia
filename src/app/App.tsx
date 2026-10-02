@@ -1,13 +1,35 @@
 import { createBrowserRouter, RouterProvider } from 'react-router';
-import { APP_NAME } from '../config';
+import { useTheme } from '../features/theme/useTheme';
+import { en } from '../shared/i18n/en';
+import { Toaster } from '../shared/ui/toast';
+import { ErrorScreen } from './ErrorScreen';
+import { Shell } from './Shell';
+
+const Page = ({ title }: { title: string }) => <h1 className="p-6 text-2xl font-semibold">{title}</h1>;
 
 const router = createBrowserRouter([
-  { path: '/', element: <h1>{APP_NAME}</h1> },
-  { path: '/login', element: <h1>Sign in</h1> },
-  { path: '/read/:documentId', element: <h1>Reader</h1> },
-  { path: '/settings', element: <h1>Settings</h1> },
+  {
+    errorElement: <ErrorScreen />,
+    children: [
+      {
+        element: <Shell />,
+        children: [
+          { path: '/', element: <Page title={en.library.title} /> },
+          { path: '/settings', element: <Page title={en.settings.title} /> },
+        ],
+      },
+      { path: '/read/:documentId', element: <Page title={en.reader.title} /> },
+      { path: '/login', element: <Page title={en.auth.title} /> },
+    ],
+  },
 ]);
 
 export function App() {
-  return <RouterProvider router={router} />;
+  useTheme();
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster />
+    </>
+  );
 }
