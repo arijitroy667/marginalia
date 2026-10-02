@@ -194,3 +194,13 @@ export function deviceId(): Promise<string> {
   });
   return deviceIdPromise;
 }
+
+/** Device-local Line Engine cache (PRD §8.5); keyed by engine version, so engine changes never read stale lines. */
+export const lineCacheRepo = {
+  async get(docHash: string, page: number, engine: number): Promise<unknown> {
+    return (await db.lineCache.get([docHash, page, engine]))?.data;
+  },
+  async put(docHash: string, page: number, engine: number, data: unknown): Promise<void> {
+    await db.lineCache.put({ docHash, page, engine, data });
+  },
+};

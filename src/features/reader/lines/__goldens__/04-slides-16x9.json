@@ -1,0 +1,62 @@
+[
+ {
+  "page": 1,
+  "hasTextLayer": true,
+  "lines": [
+   "0|Marginalia design review|0.042,0.926,0.138,0.022",
+   "1|Reading Lines, Not Pages|0.219,0.360,0.563,0.081",
+   "1|A tour of the line engine|0.368,0.492,0.264,0.044"
+  ]
+ },
+ {
+  "page": 2,
+  "hasTextLayer": true,
+  "lines": [
+   "0|Why lines matter|0.063,0.113,0.300,0.067",
+   "1|· Your come extraordinary two who being each page can so those are|0.073,0.260,0.769,0.044",
+   "1|work the of?|0.080,0.323,0.136,0.044",
+   "1|· Circumstances been before, letter river, through characteristic day, said|0.073,0.408,0.804,0.044",
+   "1|out?|0.080,0.471,0.049,0.044",
+   "1|· And so its these both much may they down as which.|0.073,0.557,0.601,0.044",
+   "1|· His made will his since it river may make it?|0.073,0.642,0.495,0.044"
+  ]
+ },
+ {
+  "page": 3,
+  "hasTextLayer": true,
+  "lines": [
+   "0|Images stay natural|0.063,0.113,0.350,0.067",
+   "1|Has circumstances here if here also over|0.063,0.266,0.377,0.037",
+   "1|been since while. Your it well such first man|0.063,0.318,0.403,0.037",
+   "1|back note under may now last your years|0.063,0.370,0.380,0.037",
+   "1|state no get must, come its.|0.063,0.422,0.255,0.037",
+   "2|Figure: a photograph that must not be inverted|0.521,0.698,0.343,0.030"
+  ]
+ },
+ {
+  "page": 4,
+  "hasTextLayer": true,
+  "lines": [
+   "0|Trade-offs|0.063,0.113,0.183,0.067",
+   "1|Pros|0.063,0.239,0.060,0.048",
+   "2|· So so was other their.|0.063,0.340,0.212,0.037",
+   "3|· As where are could.|0.063,0.414,0.195,0.037",
+   "4|· Such were right.|0.063,0.489,0.162,0.037",
+   "5|· Even came note.|0.063,0.563,0.167,0.037",
+   "6|Cons|0.531,0.239,0.068,0.048",
+   "7|· Make reading down who?|0.531,0.340,0.248,0.037",
+   "8|· Its garden the many go?|0.531,0.414,0.236,0.037",
+   "9|· Other never each who.|0.531,0.489,0.222,0.037",
+   "10|· While is most our that?|0.531,0.563,0.223,0.037"
+  ]
+ },
+ {
+  "page": 5,
+  "hasTextLayer": true,
+  "lines": [
+   "0|Pipeline|0.063,0.113,0.144,0.067",
+   "1|PDF bytes|0.092,0.466,0.088,0.033",
+   "2|Text items Regions Lines Anchors|0.274,0.466,0.624,0.033"
+  ]
+ }
+]

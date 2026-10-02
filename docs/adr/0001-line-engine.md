@@ -71,8 +71,14 @@ F1 counts a predicted line as correct when whitespace-insensitive NFKC text is e
 None of these affect stored annotations: anchors carry their own rects (§8.6), so engine changes only alter
 which lines are offered for *new* selections. Bump `ENGINE_VERSION` on any segmentation change.
 
-## Consequences
+## Consequences (done in T-200)
 
-T-200 moves `spikes/line-engine/{engine,adapter}.ts` into `src/core/line-engine` (adapter into the reader
-feature, since it touches PDF.js shapes), adds JSON goldens per fixture page, turns the F1 thresholds into a
-CI regression gate, and adds the in-memory LRU + Dexie `lineCache`.
+- Engine: `src/core/line-engine` (pure; `tsconfig.core.json` has no DOM lib). PDF.js adapter:
+  `src/features/reader/lines/textItems.ts`.
+- CI gate: `src/features/reader/lines/corpus.test.ts` asserts the S1 thresholds and compares per-page goldens
+  (`__goldens__/*.json`, one `region|text|rect` string per line). A golden diff = segmentation changed:
+  review, bump `ENGINE_VERSION`, `vitest -u`.
+- Tuning tools: `pnpm tsx scripts/line-engine-report.ts` (F1, latency, prediction dumps incl. the real corpus)
+  and `python scripts/line-overlay.py` (PNG overlays); shared scorer `scripts/line-score.ts`.
+- Cache: `getPageLines()` = memory LRU (50 pages) -> Dexie `lineCache[docHash+page+engine]` -> PDF.js +
+  engine; never throws (FR-LIN-07).

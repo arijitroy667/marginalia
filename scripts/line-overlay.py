@@ -1,5 +1,5 @@
 """Render predicted lines over PDF pages for human review (S1).
-Usage: python spikes/line-engine/overlay.py <pred.json> <pdf> <pages comma-separated|all> [dpi]
+Usage: python scripts/line-overlay.py <pred.json> <pdf> <pages comma-separated|all> [dpi]
 Line rects are outlined (colour cycles per region); the highlight band is a faint fill.
 """
 import json
@@ -14,7 +14,7 @@ pred = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 doc = fitz.open(sys.argv[2])
 want = None if sys.argv[3] == "all" else {int(x) for x in sys.argv[3].split(",")}
 dpi = int(sys.argv[4]) if len(sys.argv) > 4 else 100
-out = Path(__file__).parent / "out" / "overlays"
+out = Path(__file__).parent.parent / "test-results" / "line-engine" / "overlays"
 out.mkdir(parents=True, exist_ok=True)
 
 for pg in pred["pages"]:

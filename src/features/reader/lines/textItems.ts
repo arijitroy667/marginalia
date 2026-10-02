@@ -3,7 +3,7 @@
  * Geometry mirrors the PDF.js TextLayer span box: top = baseline - ascentRatio * fontHeight,
  * height = fontHeight, but the ascent comes from the textContent style (deterministic, no canvas).
  */
-import type { RawTextItem } from './engine';
+import type { RawTextItem } from '../../../core/line-engine';
 
 type Matrix = number[];
 interface TextItemLike {

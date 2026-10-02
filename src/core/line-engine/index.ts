@@ -1,5 +1,5 @@
 /**
- * Line Engine (spike S1, PRD §8.5). Pure TypeScript: no DOM, React, Supabase or PDF.js types.
+ * Line Engine (PRD §8.5, ADR 0001). Pure TypeScript: no DOM, React, Supabase or PDF.js types.
  * Reconstructs visual text lines from positioned text items:
  *   1. drop whitespace-only items (geometry), vertical items become single-item lines
  *   2. regions by recursive XY-cut -- column (vertical) cuts are tried before band

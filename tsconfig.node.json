@@ -19,7 +19,7 @@
     "supabase/tests",
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
-    "spikes/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "spikes/**/*.ts"
   ]
 }

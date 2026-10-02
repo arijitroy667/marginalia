@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPageLines, hitTest, neighborLine, type RawTextItem } from './engine';
+import { buildPageLines, hitTest, neighborLine, type RawTextItem } from './index';
 
 const SIZE = { width: 600, height: 800 };
 /** Item with its baseline at (x, base) in page units; width ~ 0.5 em per char. */
