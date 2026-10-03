@@ -1,6 +1,6 @@
 # ADR 0005 — Supabase: schema, tenancy test, uploads, plan limits (spike S5)
 
-- Status: **decided; execution against the hosted project pending credentials** (`.env.local`)
+- Status: accepted (2026-10-03): migration applied to the hosted project, tenancy suite green
 - Requirements: PRD §9.1, §8.8 (blob transfer), §11 S5, H6, R4, NFR-SEC-01/02, FR-SYN-07
 
 ## Environment decision
@@ -53,5 +53,14 @@ Users are deleted afterwards (cascade removes their rows; their objects are remo
 
 ## Results
 
-_Pending: run `node scripts/db.mjs push && pnpm test:db` once `.env.local` exists, then record the output
-here._
+2026-10-03, hosted project (region ap-northeast-2, session pooler on 5432):
+
+- `pnpm db:push`: `0001_init.sql` applied cleanly (`Finished supabase db push`).
+- `pnpm test:db`: **7 / 7 passed** in 28 s — both users isolated on every table and in the `pdfs` bucket,
+  composite-FK cross-tenant edge refused, constraints, trigger-owned `updated_at`, 7 MB TUS upload.
+- `pnpm db:types > src/core/supabase/types.ts`: generated (Prettier-formatted, excluded from lint). The sync
+  client stays untyped on purpose: tables are addressed dynamically and every pulled row is Zod-validated
+  (`core/sync/mapping.ts`), which is the boundary check rule 8 asks for.
+- Network note: some networks block outbound 5432/6543 (seen on the dev machine's first network: every
+  Supabase host and a public port-test server timed out). Migrations then need another network or the
+  Dashboard SQL editor; the app itself only uses HTTPS.
