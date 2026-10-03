@@ -4,6 +4,7 @@ import { ZOOM_DEFAULTS } from '../../config';
 import type { Anchor } from '../../core/anchors/types';
 import type { DocumentRow, PositionRow } from '../../core/db/models';
 import { annotationsRepo } from '../../core/db/repos';
+import { db } from '../../core/db/schema';
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery';
 import { readPref, usePref } from '../../shared/hooks/usePref';
 import { en } from '../../shared/i18n/en';
@@ -88,7 +89,15 @@ function useAutoHideChrome(
 }
 
 /** Reader shell (FR-RDR-01..03, FR-RDR-12; phones: T-112, PRD §10.3). */
-export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentProxy }) {
+export function ReaderView({
+  row,
+  pdf,
+  focusAnnotation = null,
+}: {
+  row: DocumentRow;
+  pdf: PDFDocumentProxy;
+  focusAnnotation?: string | null;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const topBar = useRef<HTMLDivElement>(null);
   const pageInput = useRef<HTMLInputElement>(null);
@@ -372,7 +381,24 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
     pdf,
     docHash: row.contentHash,
     onRemote: setRemote,
+    restore: !focusAnnotation,
   });
+
+  // opened at an annotation (search result): put its line at the reading slot and pulse it
+  useEffect(() => {
+    const v = viewerRef.current?.viewer;
+    if (!pagesReady || !v || !focusAnnotation) return;
+    let cancelled = false;
+    void db.annotations.get(focusAnnotation).then((a) => {
+      if (cancelled || !a || a.documentId !== row.id || !container.current) return;
+      requestAnimationFrame(
+        () => !cancelled && container.current && jumpToAnchor(v, container.current, a.anchor, getInset()),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pagesReady, focusAnnotation, row.id, getInset]);
 
   // PDFViewer does not watch its container: re-fit fit-width/fit-page when the viewer area resizes
   useEffect(() => {

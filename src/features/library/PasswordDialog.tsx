@@ -39,7 +39,9 @@ export function usePasswordPrompt(): { prompt: (name: string) => PasswordPrompt;
           className="fixed top-1/2 left-1/2 z-50 w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-line bg-surface p-5 text-ui-fg shadow-xl"
         >
           <Dialog.Title className="text-lg font-semibold">{en.password.title}</Dialog.Title>
-          <Dialog.Description className="mt-1 text-sm text-muted">{req && en.password.body(req.name)}</Dialog.Description>
+          <Dialog.Description className="mt-1 text-sm text-muted">
+            {req && en.password.body(req.name)}
+          </Dialog.Description>
           <form
             className="mt-4 flex flex-col gap-3"
             onSubmit={(e) => {

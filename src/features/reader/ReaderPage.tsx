@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
 import type { DocumentRow } from '../../core/db/models';
 import { coversRepo, documentsRepo, filesRepo } from '../../core/db/repos';
 import { db } from '../../core/db/schema';
@@ -25,6 +25,8 @@ function classify(e: unknown): ReaderErrorKind {
 /** /read/:documentId — loads the local row and file, opens the PDF (with password prompt), or explains why not. */
 export function ReaderPage() {
   const { documentId = '' } = useParams();
+  const [params] = useSearchParams();
+  const focusAnnotation = params.get('a'); // opened from a search result (FR-PNL-02)
   const [attempt, setAttempt] = useState(0);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const { prompt, dialog } = usePasswordPrompt();
@@ -74,7 +76,7 @@ export function ReaderPage() {
       )}
       {phase.kind === 'error' && <ReaderError kind={phase.reason} onRetry={retry} />}
       {phase.kind === 'no-file' && <FileGate row={phase.row} onFile={retry} />}
-      {phase.kind === 'ready' && <ReaderView row={phase.row} pdf={phase.pdf} />}
+      {phase.kind === 'ready' && <ReaderView row={phase.row} pdf={phase.pdf} focusAnnotation={focusAnnotation} />}
       {dialog}
     </>
   );

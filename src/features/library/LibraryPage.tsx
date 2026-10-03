@@ -7,6 +7,7 @@ import { platform } from '../../core/platform';
 import { usePref } from '../../shared/hooks/usePref';
 import { en } from '../../shared/i18n/en';
 import { searchKey } from '../../shared/utils/text';
+import { AnnotationResults } from './AnnotationResults';
 import { toast } from '../../shared/ui/toast';
 import { addPdf } from './addPdf';
 import { DocumentCard, type LibraryView } from './DocumentCard';
@@ -132,6 +133,7 @@ export function LibraryPage() {
           </div>
           <p className="mt-2 hidden text-sm text-muted md:block">{en.library.dropHere}</p>
           {data && visible.length === 0 && <p className="mt-8 text-muted">{en.library.noMatch(query)}</p>}
+          <AnnotationResults query={deferredQuery} />
           <ul
             aria-label={en.library.title}
             className={`mt-4 ${view === 'grid' ? 'grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3' : 'flex flex-col'}`}

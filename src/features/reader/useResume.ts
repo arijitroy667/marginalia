@@ -18,7 +18,12 @@ import type { PDFDocumentProxy } from './pdf/pdfjs';
 import type { Viewer } from './pdf/viewer';
 import { useReaderStore } from './store';
 
-const pointAnchor = (p: ReadingPoint): Anchor => ({ v: 1, page: p.page, rects: [{ x: p.x, y: p.y, w: 0, h: 0 }], quote: { exact: '', prefix: '', suffix: '' } });
+const pointAnchor = (p: ReadingPoint): Anchor => ({
+  v: 1,
+  page: p.page,
+  rects: [{ x: p.x, y: p.y, w: 0, h: 0 }],
+  quote: { exact: '', prefix: '', suffix: '' },
+});
 const keyOf = (a: Anchor) => `${a.page}:${(a.rects[0]?.y ?? 0).toFixed(4)}`;
 
 interface Options {
@@ -31,6 +36,8 @@ interface Options {
   docHash: string;
   /** A newer reading point from another device (FR-BKM-05): offer it, never jump to it. */
   onRemote?: (position: PositionRow) => void;
+  /** Opening at a specific annotation (search result): skip restoring the resume point, keep saving. */
+  restore?: boolean;
 }
 
 interface OwnPoint {
@@ -39,7 +46,17 @@ interface OwnPoint {
 }
 const ownKey = (documentId: string) => `resume:${documentId}`;
 
-export function useResume({ pagesReady, getViewer, getInset, container, documentId, pdf, docHash, onRemote }: Options): void {
+export function useResume({
+  pagesReady,
+  getViewer,
+  getInset,
+  container,
+  documentId,
+  pdf,
+  docHash,
+  onRemote,
+  restore = true,
+}: Options): void {
   useEffect(() => {
     const v = getViewer()?.viewer;
     const el = container.current;
@@ -60,7 +77,14 @@ export function useResume({ pagesReady, getViewer, getInset, container, document
       saved = keyOf(anchor);
       void metaRepo.set(ownKey(documentId), { anchor, at: new Date().toISOString() } satisfies OwnPoint); // device-local
       void deviceId().then((id) =>
-        positionsRepo.save({ documentId, page: anchor.page, anchor, progress: p.progress, deviceId: id, deviceLabel: platform.deviceLabel() }),
+        positionsRepo.save({
+          documentId,
+          page: anchor.page,
+          anchor,
+          progress: p.progress,
+          deviceId: id,
+          deviceLabel: platform.deviceLabel(),
+        }),
       );
     };
     const onScroll = () => {
@@ -80,22 +104,32 @@ export function useResume({ pagesReady, getViewer, getInset, container, document
     const onVisibility = () => document.visibilityState === 'hidden' && save();
 
     el.addEventListener('scroll', onScroll, { passive: true }); // from the start: no early scroll goes unsaved
-    void Promise.all([db.positions.get(documentId), metaRepo.get<OwnPoint>(ownKey(documentId)), deviceId()]).then(([pos, mine, me]) => {
-      if (cancelled) return;
-      const synced = pos && { anchor: pos.anchor ?? pointAnchor({ page: pos.page, x: 0.5, y: 0, progress: pos.progress }), at: pos.updatedAt };
-      const remote = pos && pos.deviceId !== me ? pos : null;
-      const own = remote ? (mine?.anchor ? mine : null) : synced;
-      if (remote && (!own || Date.parse(remote.updatedAt) > Date.parse(own.at)) && Math.abs(remote.page - (own?.anchor.page ?? 1)) >= 1) onRemote?.(remote);
-      // nothing of ours: the very top (PDF.js scrolls page 1's edge to the scroller top, under overlay chrome)
-      if (!own) return void requestAnimationFrame(() => !cancelled && (el.scrollTop = 0));
-      const at = own.anchor.rects[0];
-      saved = keyOf(own.anchor);
-      requestAnimationFrame(() => {
-        if (cancelled) return;
-        scrollToPoint(v, el, own.anchor.page, at?.y ?? 0, at?.x, getInset());
-        useReaderStore.getState().markResume(own.anchor);
-      });
-    });
+    void Promise.all([db.positions.get(documentId), metaRepo.get<OwnPoint>(ownKey(documentId)), deviceId()]).then(
+      ([pos, mine, me]) => {
+        if (cancelled || !restore) return;
+        const synced = pos && {
+          anchor: pos.anchor ?? pointAnchor({ page: pos.page, x: 0.5, y: 0, progress: pos.progress }),
+          at: pos.updatedAt,
+        };
+        const remote = pos && pos.deviceId !== me ? pos : null;
+        const own = remote ? (mine?.anchor ? mine : null) : synced;
+        if (
+          remote &&
+          (!own || Date.parse(remote.updatedAt) > Date.parse(own.at)) &&
+          Math.abs(remote.page - (own?.anchor.page ?? 1)) >= 1
+        )
+          onRemote?.(remote);
+        // nothing of ours: the very top (PDF.js scrolls page 1's edge to the scroller top, under overlay chrome)
+        if (!own) return void requestAnimationFrame(() => !cancelled && (el.scrollTop = 0));
+        const at = own.anchor.rects[0];
+        saved = keyOf(own.anchor);
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          scrollToPoint(v, el, own.anchor.page, at?.y ?? 0, at?.x, getInset());
+          useReaderStore.getState().markResume(own.anchor);
+        });
+      },
+    );
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pagehide', save);
     return () => {
@@ -105,5 +139,5 @@ export function useResume({ pagesReady, getViewer, getInset, container, document
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', save);
     };
-  }, [pagesReady, getViewer, getInset, container, documentId, pdf, docHash, onRemote]);
+  }, [pagesReady, getViewer, getInset, container, documentId, pdf, docHash, onRemote, restore]);
 }
