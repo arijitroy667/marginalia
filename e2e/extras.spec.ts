@@ -16,6 +16,7 @@ test.describe('library and reader extras (T-408, FR-LIB-07/08, FR-RDR-10/11)', (
     if (isMobile) await page.touchscreen.tap(r.x, r.y);
     else await page.mouse.click(r.x, r.y);
     await page.getByRole('button', { name: 'Highlight: Key idea' }).click();
+    await expect(page.locator('.mg-hl')).toHaveCount(1); // saved before leaving
     await page.goto('/');
 
     await menu(page).click();
@@ -32,7 +33,7 @@ test.describe('library and reader extras (T-408, FR-LIB-07/08, FR-RDR-10/11)', (
     await page.getByRole('menuitem', { name: 'Delete…' }).click();
     await page.getByRole('button', { name: /^Delete file only/ }).click();
     await expect(page.getByRole('link', { name: /On Reading Slowly/ })).toBeVisible(); // still in the library
-    expect(await idb(page, 'files')).toEqual([]);
+    await expect.poll(async () => (await idb(page, 'files')).length).toBe(0); // the delete runs after the dialog closes
     expect((await idb<{ deletedAt: string | null }>(page, 'annotations')).map((a) => a.deletedAt)).toEqual([null]);
     await page.getByRole('link', { name: /On Reading Slowly/ }).click();
     await expect(page.getByRole('button', { name: 'Attach file' })).toBeVisible(); // can be read again by attaching
@@ -42,7 +43,9 @@ test.describe('library and reader extras (T-408, FR-LIB-07/08, FR-RDR-10/11)', (
     await page.getByRole('menuitem', { name: 'Delete…' }).click();
     await page.getByRole('button', { name: /^Delete everything/ }).click();
     await expect(page.getByRole('heading', { name: 'Your library is empty' })).toBeVisible();
-    expect((await idb<{ deletedAt: string | null }>(page, 'annotations')).every((a) => a.deletedAt)).toBe(true);
+    await expect
+      .poll(async () => (await idb<{ deletedAt: string | null }>(page, 'annotations')).every((a) => a.deletedAt))
+      .toBe(true);
 
     await addViaPicker(page, '01-single-column-prose.pdf'); // the same file can be added again
     await expect(page.getByRole('link', { name: TITLE })).toBeVisible();

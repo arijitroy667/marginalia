@@ -33,6 +33,12 @@ export const en = {
     title: 'Library',
     add: 'Add PDF',
     dropHere: 'Tip: drop PDF files anywhere on this page to add them.',
+    install: 'Install app',
+    installed: 'Installed. Open Marginalia from your home screen or app list.',
+    iosInstallTitle: 'Add Marginalia to your Home Screen',
+    iosInstallBody:
+      'Tap Share, then “Add to Home Screen”. Installed, the app opens full screen, works offline, and iOS keeps your books and notes instead of clearing them after a few weeks without visits.',
+    dismiss: 'Not now',
     emptyTitle: 'Your library is empty',
     emptyBody:
       'Add a PDF to start reading. Highlights, notes and bookmarks attach to lines, and your place is saved as you read.',
@@ -257,6 +263,15 @@ export const en = {
       ['Pinch', 'Zoom'],
       ['Swipe up on the bottom bar', 'Open the annotation panel'],
     ] as const,
+  },
+  coach: {
+    title: 'Three things to try',
+    steps: {
+      pointer: ['Click a line to select it', 'Press H to highlight it', 'Press N to add a note'],
+      touch: ['Tap a line to select it', 'Tap a colour to highlight it', 'Tap Note to add a note'],
+    },
+    done: 'Done',
+    later: 'Hide tips',
   },
   pwa: {
     updateAvailable: 'A new version is available.',

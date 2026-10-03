@@ -41,6 +41,24 @@ export async function addViaPicker(page: Page, ...names: string[]) {
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Add PDF' }).first().click(); // empty library shows a second one
   await (await chooser).setFiles(names.map(fixture));
+  await setMeta(page, 'coachDone', true); // first-run tips would cover click targets; e2e/onboarding.spec.ts tests them
+}
+
+/** Write a device-local flag into the app DB's meta store. */
+export function setMeta(page: Page, key: string, value: unknown) {
+  return page.evaluate(
+    ({ key, value }) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('marginalia');
+        open.onsuccess = () => {
+          const tx = open.result.transaction('meta', 'readwrite');
+          tx.objectStore('meta').put({ key, value });
+          tx.oncomplete = () => (open.result.close(), resolve());
+          tx.onerror = () => reject(new Error(String(tx.error)));
+        };
+      }),
+    { key, value },
+  );
 }
 
 /**

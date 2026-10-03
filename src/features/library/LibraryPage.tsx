@@ -8,6 +8,7 @@ import { usePref } from '../../shared/hooks/usePref';
 import { en } from '../../shared/i18n/en';
 import { searchKey } from '../../shared/utils/text';
 import { AnnotationResults } from './AnnotationResults';
+import { InstallButton, IosInstallBanner } from './InstallBanner';
 import { toast } from '../../shared/ui/toast';
 import { addPdf } from './addPdf';
 import { DocumentCard, type LibraryView } from './DocumentCard';
@@ -78,10 +79,13 @@ export function LibraryPage() {
     >
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-semibold">{en.library.title}</h1>
-        <button className="ml-auto min-h-11 rounded-md bg-accent px-4 font-medium text-accent-fg" onClick={pick}>
+        <span className="ml-auto" />
+        <InstallButton />
+        <button className="min-h-11 rounded-md bg-accent px-4 font-medium text-accent-fg" onClick={pick}>
           {en.library.add}
         </button>
       </div>
+      <IosInstallBanner />
 
       {empty ? (
         <section className="mt-10 flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-line-strong px-6 py-16 text-center">

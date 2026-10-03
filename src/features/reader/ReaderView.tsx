@@ -18,6 +18,7 @@ import { warmthColor } from '../theme/tokens';
 import { useResolvedTheme } from '../theme/useTheme';
 import { clearHistory, redo, undo } from './commands';
 import { CheatSheet } from './CheatSheet';
+import { CoachMark } from './CoachMark';
 import { FindBar } from './FindBar';
 import { applyOverrides, route, type Action } from './keymap';
 import { SheetHandle } from './SheetHandle';
@@ -685,6 +686,7 @@ export function ReaderView({
               </button>
             </div>
           )}
+          <CoachMark documentId={row.id} />
           {/* colour-temperature overlay over the reading area, never over chrome or popovers (FR-THM-03) */}
           {warmth > 0 && <div className="mg-warmth" aria-hidden="true" style={{ background: warmthColor(warmth) }} />}
           <Overlays
