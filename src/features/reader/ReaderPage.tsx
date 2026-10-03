@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import type { DocumentRow } from '../../core/db/models';
-import { documentsRepo, filesRepo } from '../../core/db/repos';
+import { coversRepo, documentsRepo, filesRepo } from '../../core/db/repos';
 import { db } from '../../core/db/schema';
 import { en } from '../../shared/i18n/en';
 import { usePasswordPrompt } from '../library/PasswordDialog';
 import { openPdf, PasswordCancelled, type PDFDocumentProxy } from './pdf/pdfjs';
+import { FileGate } from './FileGate';
 import { ReaderError, type ReaderErrorKind } from './ReaderError';
 import { ReaderView } from './ReaderView';
 import './reader.css';
 
-type Phase = { kind: 'loading' } | { kind: 'ready'; row: DocumentRow; pdf: PDFDocumentProxy } | { kind: 'error'; reason: ReaderErrorKind };
+type Phase =
+  | { kind: 'loading' }
+  | { kind: 'ready'; row: DocumentRow; pdf: PDFDocumentProxy }
+  | { kind: 'no-file'; row: DocumentRow }
+  | { kind: 'error'; reason: ReaderErrorKind };
 
 function classify(e: unknown): ReaderErrorKind {
   if (e instanceof PasswordCancelled) return 'locked';
@@ -32,7 +37,7 @@ export function ReaderPage() {
       const row = await db.documents.get(documentId);
       if (!row || row.deletedAt) return settle({ kind: 'error', reason: 'not-found' });
       const blob = await filesRepo.get(documentId);
-      if (!blob) return settle({ kind: 'error', reason: 'no-file' }); // download/attach arrive in T-302
+      if (!blob) return settle({ kind: 'no-file', row }); // download or attach (FR-LIB-06)
       try {
         pdf = await openPdf(blob, prompt(row.title));
       } catch (e) {
@@ -40,6 +45,13 @@ export function ReaderPage() {
       }
       if (cancelled) return void pdf.loadingTask.destroy();
       void documentsRepo.update(documentId, { lastOpenedAt: new Date().toISOString() });
+      // a file that arrived by download or attach has no library cover yet
+      if (!(await coversRepo.has(documentId)))
+        void import('../library/pdfInfo').then(({ renderCover }) =>
+          renderCover(pdf!)
+            .then((c) => c && coversRepo.put(documentId, c))
+            .catch(() => undefined),
+        );
       settle({ kind: 'ready', row, pdf });
     })();
     return () => {
@@ -61,6 +73,7 @@ export function ReaderPage() {
         </p>
       )}
       {phase.kind === 'error' && <ReaderError kind={phase.reason} onRetry={retry} />}
+      {phase.kind === 'no-file' && <FileGate row={phase.row} onFile={retry} />}
       {phase.kind === 'ready' && <ReaderView row={phase.row} pdf={phase.pdf} />}
       {dialog}
     </>

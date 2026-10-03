@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Anchor } from '../anchors/types';
-import { annotationsRepo, documentsRepo, localData, metaRepo, outboxRepo, positionsRepo, settingsRepo } from './repos';
+import { annotationsRepo, documentsRepo, evictable, filesRepo, localData, metaRepo, outboxRepo, positionsRepo, settingsRepo } from './repos';
 import { db } from './schema';
 
 const hash = (c: string) => c.repeat(64);
@@ -229,3 +229,28 @@ describe('localData (FR-SYN-01)', () => {
     for (const t of db.tables) expect(await t.count(), t.name).toBe(0);
   });
 });
+
+describe('file cache policy (FR-LIB-08)', () => {
+  const f = (id: string, lastAccessAt: number, over: Partial<Parameters<typeof evictable>[0][0]> = {}) => ({ id, size: 10, lastAccessAt, pinned: false, inCloud: true, ...over });
+  it('evicts least recently opened first, down to the doc and byte budgets', () => {
+    expect(evictable([f('a', 3), f('b', 1), f('c', 2)], 2)).toEqual(['b']);
+    expect(evictable([f('a', 3, { size: 60 }), f('b', 1, { size: 60 })], 5, 100)).toEqual(['b']);
+    expect(evictable([f('a', 1), f('b', 2)], 5)).toEqual([]);
+  });
+  it('never evicts a pinned file or one that is not safely in the cloud', () => {
+    expect(evictable([f('a', 1, { pinned: true }), f('b', 2, { inCloud: false }), f('c', 3)], 1)).toEqual(['c']);
+    expect(evictable([f('a', 1, { inCloud: false }), f('b', 2, { inCloud: false })], 1)).toEqual([]); // over budget, kept
+  });
+  it('evict() keeps the file being read and device-only files', async () => {
+    for (let i = 0; i < 7; i++) {
+      const doc = await documentsRepo.create(newDoc({ contentHash: hash(String(i)), storagePath: i === 0 ? null : `u/${i}.pdf` }));
+      await filesRepo.put(doc.id, new Blob(['%PDF']));
+      await db.files.update(doc.id, { lastAccessAt: i });
+    }
+    const ids = (await db.documents.toArray()).sort((a, b) => a.contentHash.localeCompare(b.contentHash)).map((d) => d.id);
+    const evicted = await filesRepo.evict(ids[1]);
+    expect(evicted).toEqual([ids[2], ids[3]]); // 0: device-only, 1: open now
+    expect(await db.files.count()).toBe(5);
+  });
+});
+

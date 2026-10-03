@@ -9,7 +9,10 @@ async function open(page: Page, fixture: string, title: string) {
   await expect(page.locator('.page[data-page-number="1"] canvas')).toBeVisible();
 }
 const pageInput = (page: Page) => page.getByRole('textbox', { name: 'Page number' });
-const scale = (page: Page) => page.evaluate(() => Number(getComputedStyle(document.querySelector('.pdfViewer')!).getPropertyValue('--scale-factor')));
+const scale = (page: Page) =>
+  page.evaluate(() =>
+    Number(getComputedStyle(document.querySelector('.pdfViewer')!).getPropertyValue('--scale-factor')),
+  );
 
 test.describe('reader shell (T-107, FR-RDR-01..03, FR-RDR-12)', () => {
   test.describe('with a stored PDF', () => {
@@ -20,10 +23,15 @@ test.describe('reader shell (T-107, FR-RDR-01..03, FR-RDR-12)', () => {
       await expect(page.getByText('of 6')).toBeVisible();
       await expect(pageInput(page)).toHaveValue('1');
       await expect(page.locator('.page[data-page-number="1"] .textLayer span').first()).toBeAttached();
-      await expect.poll(async () => (await idb<{ lastOpenedAt: string | null }>(page, 'documents'))[0]?.lastOpenedAt).not.toBeNull();
+      await expect
+        .poll(async () => (await idb<{ lastOpenedAt: string | null }>(page, 'documents'))[0]?.lastOpenedAt)
+        .not.toBeNull();
     });
 
-    test('page navigation: buttons, page input, G, Home/End, PgUp/PgDn; invalid input ignored with feedback', async ({ page, isMobile }) => {
+    test('page navigation: buttons, page input, G, Home/End, PgUp/PgDn; invalid input ignored with feedback', async ({
+      page,
+      isMobile,
+    }) => {
       await open(page, '01-single-column-prose.pdf', '01-single-column-prose');
       if (!isMobile) {
         // phones navigate with the page field and scrubber instead (PRD §10.3, mobile.spec.ts)
@@ -98,8 +106,10 @@ test.describe('reader shell (T-107, FR-RDR-01..03, FR-RDR-12)', () => {
   test('a document whose file is not on this device says so, with recovery actions', async ({ page }) => {
     await seed(page, { documents: [docRow(7, { title: 'Elsewhere' })] });
     await page.goto(`/read/${docRow(7).id}`);
-    await expect(page.getByRole('alert')).toContainText('Not on this device yet');
-    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Not on this device yet' })).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('Elsewhere');
+    await expect(page.getByRole('alert')).toContainText('Attach the same PDF');
+    await expect(page.getByRole('button', { name: 'Attach file' })).toBeVisible(); // T-302: attach, not a dead end
     await expect(page.getByRole('link', { name: 'Back to library' })).toBeVisible();
   });
 });

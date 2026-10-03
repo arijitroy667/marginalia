@@ -82,6 +82,18 @@ test.describe('cloud: auth + sync (T-103, T-300, FR-SYN-01..05)', () => {
       .poll(async () => (await idb<{ colorId: number }>(b, 'annotations')).map((h) => h.colorId), { timeout: 30_000 })
       .toEqual([3]);
 
+    // the file itself (T-302, FR-SYN-07): uploaded by A to {user}/{hash}.pdf, downloaded and verified by B
+    const [docA] = await idb<{ storagePath: string | null; contentHash: string }>(a, 'documents');
+    expect(docA!.storagePath).toBe(`${userId}/${docA!.contentHash}.pdf`);
+    expect(await idb(b, 'files')).toEqual([]);
+    await b.getByRole('link', { name: /01-single-column-prose/ }).click();
+    await expect(b.locator('.page[data-page-number="1"] .canvasWrapper canvas').first()).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(b.locator('.page[data-page-number="1"] .mg-hl')).toHaveCount(1); // A's highlight on B's copy
+    expect((await idb<{ blob: { size: number } }>(b, 'files'))[0]?.blob.size).toBeGreaterThan(1000);
+    await b.getByRole('link', { name: 'Library' }).click();
+
     await b.getByRole('link', { name: 'Settings' }).click();
     await expect(b.getByText(`Signed in as ${email}`, { exact: false })).toBeVisible();
     await b.getByRole('button', { name: 'Sign out' }).click();

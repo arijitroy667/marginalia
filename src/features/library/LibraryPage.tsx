@@ -53,7 +53,8 @@ export function LibraryPage() {
       else if (r.kind === 'existing') {
         toast(en.library.existing(r.document.title));
         void navigate(`/read/${r.document.id}`); // same bytes: open the existing document (FR-LIB-02)
-      } else toast(en.library.added(r.document.title));
+      } else
+        toast((r.document.storageMode === 'device' ? en.library.addedDeviceOnly : en.library.added)(r.document.title));
     }
   }
   const pick = () => void platform.pickPdfFiles().then(add);

@@ -1,11 +1,46 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Dialog } from 'radix-ui';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { CLOUD_STORAGE_BYTES } from '../../config';
+import { documentsRepo, filesRepo } from '../../core/db/repos';
+import { platform } from '../../core/platform';
 import { useNavigate } from 'react-router';
 import { signOut, unsyncedChanges } from '../../core/auth';
 import { en } from '../../shared/i18n/en';
 import { useAuth } from '../auth/useAuth';
 
-/** Settings (T-401 fills in palette, shortcuts, cache); for now the account section (FR-SYN-01). */
+const size = (n: number) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : `${Math.round(n / 1024 ** 2)} MB`);
+
+/** Quota meter (FR-LIB-05): device storage, offline cache, and the account's PDF storage. */
+function StorageSection({ cloud }: { cloud: boolean }) {
+  const cached = useLiveQuery(() => filesRepo.usage(), []);
+  const cloudBytes = useLiveQuery(() => documentsRepo.cloudBytes(), []);
+  const [estimate, setEstimate] = useState<{ usage: number; quota: number } | null>(null);
+  useEffect(() => void platform.storageEstimate().then(setEstimate), [cached]);
+  const bar = (value: number, max: number, label: string) => (
+    <progress className="h-2 w-full accent-[var(--accent)]" aria-label={label} max={max} value={Math.min(value, max)} />
+  );
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4">
+      <h2 className="font-medium">{en.settings.storage}</h2>
+      {cached && <p className="text-sm text-muted">{en.settings.cachedFiles(cached.count, size(cached.bytes))}</p>}
+      {estimate && estimate.quota > 0 && (
+        <>
+          <p className="text-sm text-muted">{en.settings.deviceStorage(size(estimate.usage), size(estimate.quota))}</p>
+          {bar(estimate.usage, estimate.quota, en.settings.storage)}
+        </>
+      )}
+      {cloud && cloudBytes !== undefined && (
+        <>
+          <p className="text-sm text-muted">{en.settings.cloudStorage(size(cloudBytes), size(CLOUD_STORAGE_BYTES))}</p>
+          {bar(cloudBytes, CLOUD_STORAGE_BYTES, en.settings.account)}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Settings (T-401 fills in palette, shortcuts, cache budget): account (FR-SYN-01) and storage (FR-LIB-05). */
 export function SettingsPage() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -33,6 +68,7 @@ export function SettingsPage() {
           <p className="text-sm text-muted">{en.settings.localOnly}</p>
         )}
       </div>
+      <StorageSection cloud={auth.status === 'signed-in'} />
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />

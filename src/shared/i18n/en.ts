@@ -46,6 +46,8 @@ export const en = {
     opened: (when: string) => `opened ${when}`,
     addedAgo: (when: string) => `added ${when}`,
     added: (title: string) => `Added ${q(title)}`,
+    addedDeviceOnly: (title: string) =>
+      `Added ${q(title)}. It is larger than 50 MB, so the file stays on this device; your annotations still sync.`,
     existing: (title: string) => `${q(title)} is already in your library`,
     rejected: {
       empty: (n: string) => `${q(n)} is empty.`,
@@ -84,12 +86,28 @@ export const en = {
     percent: (p: number) => `${p}%`,
     errors: {
       'not-found': { title: 'Document not found', body: 'This document is not in your library on this device.' },
-      'no-file': { title: 'Not on this device yet', body: 'The PDF file is not stored on this device. Connect to the internet to download it, or attach the file.' },
+      'no-file': { title: 'Not on this device yet', body: '' }, // the explanation comes from FileGate
       locked: { title: 'This PDF is locked', body: 'It is password-protected. Enter the password to read it; the password is not stored.' },
       corrupt: { title: 'This PDF cannot be opened', body: 'The file appears to be damaged or incomplete.' },
       unsupported: { title: 'This PDF is not supported', body: 'It uses features this app cannot display.' },
     },
     tryAgain: 'Try again',
+    file: {
+      downloading: 'Downloading from your account…',
+      progress: (got: string, total: string) => `${got} of ${total} MB`,
+      cancelled: 'Download cancelled.',
+      failed: {
+        offline: 'You are offline. Connect to the internet to download this book, or attach the file.',
+        mismatch: 'The downloaded file did not match this book, so it was not kept. Try again, or attach the file.',
+        error: 'The download failed. Try again, or attach the file.',
+      },
+      localOnly: 'The PDF file is not stored on this device. Attach the same PDF to read it; your annotations are kept.',
+      deviceOnly: 'This book is kept on the device where it was added (it is too large for cloud storage). Attach the same PDF to read it here; your annotations are already here.',
+      notUploaded: 'This book has not reached your account from its other device yet. Open the app there, or attach the same PDF here.',
+      mismatch: 'That file is not the same PDF (its contents differ), so it was not attached. Choose the exact file.',
+      download: 'Download',
+      attach: 'Attach file',
+    },
     lineActions: 'Line actions',
     copy: 'Copy',
     copied: 'Copied',
@@ -234,6 +252,10 @@ export const en = {
     account: 'Account',
     signedInAs: (email: string) => `Signed in as ${email}. Your library and annotations sync across your devices.`,
     localOnly: 'Everything is stored on this device only.',
+    storage: 'Storage',
+    deviceStorage: (used: string, quota: string) => `This device: ${used} used of ${quota} available to the app`,
+    cloudStorage: (used: string, total: string) => `Your account: ${used} of ${total} of PDF storage`,
+    cachedFiles: (n: number, size: string) => `${n} ${n === 1 ? 'book' : 'books'} stored offline (${size})`,
   },
   auth: {
     title: 'Sign in',

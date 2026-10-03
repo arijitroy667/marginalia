@@ -14,6 +14,10 @@ const env = Env.safeParse(import.meta.env);
 
 export const isCloudConfigured = (): boolean => env.success;
 
+/** Project URL and public anon key (TUS uploads need them as plain headers). */
+export const supabaseConfig = () =>
+  env.success ? { url: env.data.VITE_SUPABASE_URL, anonKey: env.data.VITE_SUPABASE_ANON_KEY } : null;
+
 let client: Promise<SupabaseClient> | undefined;
 
 export function supabase(): Promise<SupabaseClient | null> {

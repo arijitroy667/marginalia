@@ -15,6 +15,7 @@ import {
   type PositionRow,
   type Settings,
 } from './models';
+import { OFFLINE_CACHE_BYTES, OFFLINE_CACHE_DOCS } from '../../config';
 import { db, type OutboxEntity, type OutboxOp } from './schema';
 
 const now = () => new Date().toISOString();
@@ -63,6 +64,12 @@ export const documentsRepo = {
 
   softDelete(id: string): Promise<DocumentRow> {
     return documentsRepo.update(id, { deletedAt: now() }, 'delete');
+  },
+
+  /** Bytes of PDF stored in the account's bucket: distinct live cloud files (quota meter, FR-LIB-05). */
+  async cloudBytes(): Promise<number> {
+    const docs = (await db.documents.toArray()).filter((d) => d.storagePath && !d.deletedAt);
+    return [...new Map(docs.map((d) => [d.storagePath, d.fileSize])).values()].reduce((n, s) => n + s, 0);
   },
 
   /** Live (not tombstoned) document with these bytes, if already in the library (FR-LIB-02 dedupe). */
@@ -168,6 +175,12 @@ export const settingsRepo = {
   },
 };
 
+/** Library covers (device-local, re-rendered from the PDF where it is opened). */
+export const coversRepo = {
+  has: async (documentId: string) => (await db.covers.where('documentId').equals(documentId).count()) > 0,
+  put: (documentId: string, blob: Blob) => db.covers.put({ documentId, blob }).then(() => undefined),
+};
+
 /** Local PDF blob cache (FR-LIB-06/08). Blobs never ride the outbox; they use the transfer queue (M3). */
 export const filesRepo = {
   async put(documentId: string, blob: Blob, pinned = false): Promise<void> {
@@ -178,7 +191,64 @@ export const filesRepo = {
     if (row) await db.files.update(documentId, { lastAccessAt: Date.now() });
     return row?.blob;
   },
+  async has(documentId: string): Promise<boolean> {
+    return (await db.files.where('documentId').equals(documentId).count()) > 0;
+  },
+  /** Files cached on this device (quota meter, FR-LIB-05). */
+  async usage(): Promise<{ count: number; bytes: number }> {
+    const files = await db.files.toArray();
+    return { count: files.length, bytes: files.reduce((n, f) => n + f.size, 0) };
+  },
+  /** "Keep offline" (FR-LIB-08): a pinned file is never evicted. */
+  async setPinned(documentId: string, pinned: boolean): Promise<void> {
+    await db.files.update(documentId, { pinned });
+  },
+  /** Applies the cache budget (FR-LIB-08); `keep` (the file being read) is never evicted. Returns evicted ids. */
+  async evict(keep?: string): Promise<string[]> {
+    const files = await db.files.toArray();
+    const docs = new Map(
+      (await db.documents.bulkGet(files.map((f) => f.documentId))).filter((d) => !!d).map((d) => [d.id, d]),
+    );
+    const ids = evictable(
+      files.map((f) => ({
+        id: f.documentId,
+        size: f.size,
+        lastAccessAt: f.lastAccessAt,
+        pinned: f.pinned || f.documentId === keep,
+        inCloud: !!docs.get(f.documentId)?.storagePath,
+      })),
+    );
+    await db.files.bulkDelete(ids);
+    return ids;
+  },
 };
+
+export interface CachedFile {
+  id: string;
+  size: number;
+  lastAccessAt: number;
+  pinned: boolean;
+  /** Stored in the user's cloud bucket, so it can be downloaded again. */
+  inCloud: boolean;
+}
+
+/**
+ * Local PDF cache policy (FR-LIB-08): keep at most OFFLINE_CACHE_DOCS files and OFFLINE_CACHE_BYTES; evict the least
+ * recently opened first. Only files that are safely in the cloud and not pinned are ever evicted: a device-only or
+ * not-yet-uploaded file is the only copy, so the budget may be exceeded rather than lose it.
+ */
+export function evictable(files: CachedFile[], maxDocs = OFFLINE_CACHE_DOCS, maxBytes = OFFLINE_CACHE_BYTES): string[] {
+  let count = files.length;
+  let bytes = files.reduce((n, f) => n + f.size, 0);
+  const out: string[] = [];
+  for (const f of [...files].filter((f) => f.inCloud && !f.pinned).sort((a, b) => a.lastAccessAt - b.lastAccessAt)) {
+    if (count <= maxDocs && bytes <= maxBytes) break;
+    out.push(f.id);
+    count--;
+    bytes -= f.size;
+  }
+  return out;
+}
 
 export const libraryRepo = {
   /**
