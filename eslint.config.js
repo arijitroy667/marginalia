@@ -31,6 +31,20 @@ export default tseslint.config(
   },
   { files: ['src/**/*.{ts,tsx}'], ...reactHooks.configs.flat['recommended-latest'] },
   {
+    // NFR-SEC-06: PDF text, quotes and notes never reach logs; there is no logging in the app at all
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/*.test.{ts,tsx}'],
+    rules: {
+      'no-console': 'error',
+      // NFR-SEC-05: notes are rendered as React elements, never HTML strings
+      'no-restricted-syntax': [
+        'error',
+        { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: 'Raw HTML is not allowed (NFR-SEC-05).' },
+        { selector: "AssignmentExpression[left.property.name='innerHTML']", message: 'Raw HTML is not allowed (NFR-SEC-05).' },
+      ],
+    },
+  },
+  {
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/core/sync/**', 'src/core/auth/**', 'src/core/supabase/**'],
     rules: { 'no-restricted-imports': ['error', { paths: [SUPABASE_ONLY_IN_CORE] }] },

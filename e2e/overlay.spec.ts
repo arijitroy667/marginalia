@@ -52,12 +52,18 @@ async function drift(page: Page): Promise<number> {
   const clip = { x: o.x - pad, y: o.y - pad, width: o.width + 2 * pad, height: o.height + 2 * pad };
   const png = await page.screenshot({ clip });
   const ink = await page.evaluate(async (b64) => {
-    const bmp = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+    // decoded without fetch(data:): the app's CSP (connect-src 'self') applies to this page too
+    const bmp = await createImageBitmap(
+      new Blob([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], { type: 'image/png' }),
+    );
     const c = Object.assign(document.createElement('canvas'), { width: bmp.width, height: bmp.height });
     const ctx = c.getContext('2d')!;
     ctx.drawImage(bmp, 0, 0);
     const { data } = ctx.getImageData(0, 0, bmp.width, bmp.height);
-    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+    let x0 = Infinity,
+      y0 = Infinity,
+      x1 = -1,
+      y1 = -1;
     for (let y = 0; y < bmp.height; y++)
       for (let x = 0; x < bmp.width; x++) {
         const i = (y * bmp.width + x) * 4;
@@ -82,7 +88,10 @@ async function drift(page: Page): Promise<number> {
 test.describe('overlay manager (T-202, PRD §8.4)', () => {
   test.beforeEach(({ browserName }) => test.skip(noIdbBlobs(browserName), 'WinCairo WebKit: no IndexedDB Blobs'));
 
-  test('a stored highlight covers its rect exactly; survives rotation and zoom re-renders', async ({ page, isMobile }) => {
+  test('a stored highlight covers its rect exactly; survives rotation and zoom re-renders', async ({
+    page,
+    isMobile,
+  }) => {
     await openWithHighlight(page);
     // fractional DPR (Pixel 7 = 2.625): PDF.js snaps the canvas, ink sits ~2-3 px off its CSS layout (ADR 0003)
     expect(await drift(page)).toBeLessThanOrEqual(isMobile ? 3.5 : 2);

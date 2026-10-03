@@ -18,7 +18,10 @@ async function setTheme(page: Page, name: 'Light' | 'Warm' | 'Dark') {
 async function patch(page: Page, x: number, y: number) {
   const png = await page.screenshot({ clip: { x, y, width: 6, height: 6 } });
   return page.evaluate(async (b64) => {
-    const bmp = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+    // decoded without fetch(data:): the app's CSP (connect-src 'self') applies to this page too
+    const bmp = await createImageBitmap(
+      new Blob([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], { type: 'image/png' }),
+    );
     const c = Object.assign(document.createElement('canvas'), { width: bmp.width, height: bmp.height });
     const ctx = c.getContext('2d')!;
     ctx.drawImage(bmp, 0, 0);

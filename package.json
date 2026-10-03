@@ -19,7 +19,8 @@
     "db:push": "node scripts/db.mjs push",
     "db:types": "node scripts/db.mjs types",
     "test:db": "vitest run --project db",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "check:secrets": "node scripts/check-secrets.mjs"
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",

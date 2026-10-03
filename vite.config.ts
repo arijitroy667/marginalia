@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { cpSync, existsSync } from 'node:fs';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { APP_NAME } from './src/config.ts';
 
@@ -18,12 +18,48 @@ function pdfjsAssets() {
   };
 }
 
-export default defineConfig({
+/**
+ * Content-Security-Policy (NFR-SEC-04), production builds only (the dev server's HMR needs inline scripts).
+ * No 'unsafe-eval' and no inline scripts; 'wasm-unsafe-eval' is what PDF.js 6's image decoders (wasm/) need.
+ * connect-src names only this app's Supabase project: REST/Auth/Storage, Realtime (wss) and the TUS host.
+ * A <meta> CSP cannot carry frame-ancestors: the host adds that as a header (docs/deploy.md).
+ */
+export function contentSecurityPolicy(supabaseUrl?: string): string {
+  const cloud = supabaseUrl ? new URL(supabaseUrl) : null;
+  const ref = cloud?.hostname.endsWith('.supabase.co') ? cloud.hostname.split('.')[0] : null;
+  const connect = cloud ? [cloud.origin, `wss://${cloud.host}`, ...(ref ? [`https://${ref}.storage.supabase.co`] : [])] : [];
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'wasm-unsafe-eval'",
+    "style-src 'self'",
+    "img-src 'self' blob: data:",
+    "font-src 'self'",
+    `connect-src 'self' ${connect.join(' ')}`.trim(),
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "frame-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
+}
+
+export default defineConfig(({ mode }) => ({
   plugins: [
     pdfjsAssets(),
     react(),
     tailwindcss(),
     { name: 'app-name', transformIndexHtml: (html) => html.replaceAll('%APP_NAME%', APP_NAME) },
+    {
+      name: 'csp',
+      apply: 'build',
+      transformIndexHtml: (html) => {
+        const env = { ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env }; // process env wins, as in Vite
+        const csp = contentSecurityPolicy(env.VITE_SUPABASE_URL || undefined);
+        return html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="${csp}" />`);
+      },
+    },
     VitePWA({
       registerType: 'prompt', // an update never reloads mid-read (§8.9)
       injectRegister: false, // registered by <UpdatePrompt> (virtual:pwa-register/react)
@@ -62,4 +98,4 @@ export default defineConfig({
       },
     }),
   ],
-});
+}));
