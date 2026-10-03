@@ -1,0 +1,11 @@
+.env*
+!.env.example
+node_modules
+dist
+dist-cloud
+fixtures/pdfs
+spikes
+e2e
+test-results
+playwright-report
+.lighthouseci
