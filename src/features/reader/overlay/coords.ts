@@ -2,7 +2,10 @@ import { fromCanonical, toCanonical } from '../../../core/anchors/geometry';
 import type { NRect } from '../../../core/anchors/types';
 
 /** Page number and canonical normalised point under a pointer, or null off-page. */
-export function pagePoint(e: { clientX: number; clientY: number; target: EventTarget | null }, rotation: number): { page: number; x: number; y: number } | null {
+export function pagePoint(
+  e: { clientX: number; clientY: number; target: EventTarget | null },
+  rotation: number,
+): { page: number; x: number; y: number } | null {
   const pageEl = (e.target as Element | null)?.closest<HTMLElement>('.page[data-page-number]');
   if (!pageEl) return null;
   const r = pageEl.getBoundingClientRect();

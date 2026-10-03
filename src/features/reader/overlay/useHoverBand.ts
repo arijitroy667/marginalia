@@ -9,7 +9,13 @@ import { pagePoint } from './coords';
 export const HOVER_DELAY_MS = 120; // FR-LIN-01
 
 /** Desktop hover: faint band on the line under the mouse after 120 ms; never on touch or while dragging. */
-export function useHoverBand(ready: boolean, getViewer: () => Viewer | null, container: RefObject<HTMLDivElement | null>, pdf: PDFDocumentProxy, docHash: string) {
+export function useHoverBand(
+  ready: boolean,
+  getViewer: () => Viewer | null,
+  container: RefObject<HTMLDivElement | null>,
+  pdf: PDFDocumentProxy,
+  docHash: string,
+) {
   const [hover, setHover] = useState<{ page: number; band: NRect } | null>(null);
 
   useEffect(() => {

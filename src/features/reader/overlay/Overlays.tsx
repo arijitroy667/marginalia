@@ -7,7 +7,7 @@ import { en } from '../../../shared/i18n/en';
 import { useSettings } from '../../settings/useSettings';
 import { getPageLines } from '../lines/pageLines';
 import type { PDFDocumentProxy } from '../pdf/pdfjs';
-import type { Viewer } from '../pdf/viewer';
+import { pageViewAt, type Viewer } from '../pdf/viewer';
 import { useReaderStore } from '../store';
 import { BookmarkMarker } from './BookmarkMarker';
 import { usePageHosts } from './hosts';
@@ -27,6 +27,8 @@ interface Props {
   rotation: number;
   toolbar: ReactNode;
 }
+
+const NONE: AnnotationRow[] = []; // stable: memoised page layers skip pages whose props did not change
 
 interface PageAnnotations {
   highlights: AnnotationRow[];
@@ -83,17 +85,31 @@ export function Overlays({ ready, getViewer, container, pdf, documentId, docHash
     return out;
   }, [annotations, gutterStyle, hidden]);
 
-  // pages without a text layer get a banner and no line features (FR-LIN-06)
+  // Each page's lines are prepared in idle time once its text layer is up: the first tap on the page then answers
+  // at once, and pages without text get their banner (FR-LIN-06). Idle, not immediately: extracting text for every
+  // page as it scrolls into view competed with rendering (T-403).
   useEffect(() => {
+    const v = getViewer();
+    if (!ready || !v) return;
     let alive = true;
-    for (const page of hosts.keys())
-      void getPageLines(pdf, docHash, page).then((pl) => {
-        if (alive && pl && !pl.hasTextLayer) setTextless((s) => (s.has(page) ? s : new Set(s).add(page)));
-      });
+    const idle = (fn: () => void) =>
+      'requestIdleCallback' in window ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 200);
+    const warm = ({ pageNumber }: { pageNumber: number }) =>
+      idle(
+        () =>
+          void getPageLines(pdf, docHash, pageNumber).then((pl) => {
+            if (alive && pl && !pl.hasTextLayer)
+              setTextless((cur) => (cur.has(pageNumber) ? cur : new Set(cur).add(pageNumber)));
+          }),
+      );
+    v.eventBus.on('textlayerrendered', warm);
+    for (let i = 0; i < v.viewer.pagesCount; i++)
+      if (pageViewAt(v.viewer, i)?.div.querySelector(':scope > .canvasWrapper')) warm({ pageNumber: i + 1 }); // rendered before we subscribed
     return () => {
       alive = false;
+      v.eventBus.off('textlayerrendered', warm);
     };
-  }, [hosts, pdf, docHash]);
+  }, [ready, getViewer, pdf, docHash]);
 
   const focus = selection ?? (notes && { page: notes.anchor.page, anchor: notes.anchor }); // band under the line being annotated
   const noteHost = notes && hosts.get(notes.anchor.page);
@@ -106,7 +122,7 @@ export function Overlays({ ready, getViewer, container, pdf, documentId, docHash
             key={page}
             hosts={h}
             rotation={rotation}
-            highlights={a?.highlights ?? []}
+            highlights={a?.highlights ?? NONE}
             noted={a?.noted}
             hover={hover?.page === page && focus?.page !== page ? hover.band : undefined}
             selected={region?.page === page ? [region.rect] : focus?.page === page ? focus.anchor.rects : undefined}

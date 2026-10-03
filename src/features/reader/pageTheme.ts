@@ -89,9 +89,10 @@ export function usePageTheme(
       // PDF.js 6 types these as null/any; at runtime: the page's main canvas and the PDFPageProxy
       const canvas = (pv as unknown as { canvas?: HTMLCanvasElement | null } | undefined)?.canvas;
       if (!pv || !canvas?.width) return;
-      const dark = meanLuminance(canvas) < DARK_PAGE;
-      pv.div.toggleAttribute('data-mg-dark', dark);
       clearRestore(pv.div);
+      // sampling reads pixels back from the GPU: only the Dark theme needs it (T-403, NFR-PERF-02)
+      const dark = theme === 'dark' && meanLuminance(canvas) < DARK_PAGE;
+      pv.div.toggleAttribute('data-mg-dark', dark);
       const coords = (pv.pdfPage as { imageCoordinates?: ArrayLike<number> | null } | null)?.imageCoordinates;
       if (theme === 'dark' && !invertImages && !dark && coords?.length) restoreImages(pv.div, canvas, coords);
     };

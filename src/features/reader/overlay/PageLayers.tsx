@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { createPortal } from 'react-dom';
 import { groupByLine, markerY } from '../../../core/anchors/anchor';
 import { fromCanonical } from '../../../core/anchors/geometry';
@@ -26,7 +27,7 @@ export interface PageOverlayProps {
 }
 
 /** Highlights + hover/selection bands under the text layer; gutter markers above it (PRD §8.4, §10.4). */
-export function PageLayers({
+function PageLayersImpl({
   hosts,
   rotation,
   highlights,
@@ -105,3 +106,9 @@ export function PageLayers({
     </>
   );
 }
+
+/**
+ * Memoised: a newly rendered page adds a host, and without this every page seen so far re-rendered its layers,
+ * O(pages) per page on a long scroll (T-403). Callers pass stable arrays for pages without annotations.
+ */
+export const PageLayers = memo(PageLayersImpl);

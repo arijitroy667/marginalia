@@ -18,6 +18,7 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm check:secrets # NFR-SEC-02
+      - run: npx -y @lhci/cli@0.14.0 autorun # T-403: Lighthouse budgets (lighthouserc.json), mobile profile
       - run: pnpm exec playwright install --with-deps chromium webkit
       - run: pnpm e2e
       - if: failure()

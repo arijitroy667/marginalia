@@ -84,8 +84,11 @@
 }
 .mg-under {
   z-index: 0; /* same as .textLayer, placed before it in DOM order */
-  /* the host is the stacking context, so it must carry the blend to reach the canvas below:
-     multiply keeps black text black under a light highlight; dark themes use normal + alpha (tokens) */
+}
+/* the host is the stacking context, so it must carry the blend to reach the canvas below: multiply keeps black
+   text black under a light highlight; dark themes use normal + alpha (tokens). Only pages with a highlight blend:
+   a blend layer over every page canvas costs paint time on each scroll frame (T-403). */
+.mg-under:has(.mg-hl) {
   mix-blend-mode: var(--hl-blend, multiply);
 }
 .mg-over {
