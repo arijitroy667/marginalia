@@ -40,7 +40,11 @@ the task); the password is never stored or logged (tested by scanning the local 
 
 ## Test environment note
 
-Playwright's WebKit build for **Windows** (WinCairo) cannot store Blobs in IndexedDB: writes of `Blob`/`File`
-fail while strings and ArrayBuffers succeed. Safari on macOS/iOS and WebKit on Linux CI support it. The PRD
-specifies Blob storage (FR-LIB-06), which also keeps large files disk-backed, so the design stays; tests
-that store a PDF skip only for `webkit` on `win32` (`e2e/helpers.ts: noIdbBlobs`).
+Playwright's WebKit cannot store Blobs in IndexedDB in its ephemeral contexts: writes of `Blob`/`File` abort
+the transaction while strings and ArrayBuffers succeed. This holds on Windows *and* Linux (re-checked
+2026-10-03 in the Playwright 1.63 Linux image; an earlier note assumed Linux CI was unaffected — it is not).
+Safari on macOS/iOS stores Blobs. The PRD specifies Blob storage (FR-LIB-06), which keeps large files
+disk-backed, so the design stays; tests that store a PDF skip in WebKit (`e2e/helpers.ts: noIdbBlobs`) and the
+Safari path is covered by the real-device checklist. Phone layouts are still exercised in Pixel 7 emulation
+(Chromium). A storage failure is reported to the user as such ("could not be saved on this device"), not as a
+damaged file; `e2e/add-pdf.spec.ts` checks that message using this WebKit limitation as the reproduction.

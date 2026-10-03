@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the Playwright suite on Linux (real WebKit with IndexedDB Blobs, unlike Windows' WinCairo port) inside the
+# Runs the Playwright suite on Linux, as CI does (fonts, rendering and WebKit differ from Windows), inside the
 # official Playwright image, from a clean copy of the repo. Usage (from the repo root, Docker running):
 #   docker run --rm --ipc=host -v "$PWD:/src:ro" -v pnpm-store:/pnpm-store \
 #     mcr.microsoft.com/playwright:v1.63.0-noble bash /src/scripts/e2e-linux.sh [playwright args, e.g. --project webkit]

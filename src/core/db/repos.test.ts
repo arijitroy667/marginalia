@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Anchor } from '../anchors/types';
-import { annotationsRepo, documentsRepo, positionsRepo, settingsRepo } from './repos';
+import { annotationsRepo, documentsRepo, outboxRepo, positionsRepo, settingsRepo } from './repos';
 import { db } from './schema';
 
 const hash = (c: string) => c.repeat(64);
@@ -17,7 +17,12 @@ const newDoc = (over: Partial<Parameters<typeof documentsRepo.create>[0]> = {}) 
   coverPath: null,
   ...over,
 });
-const anchor = (page = 1): Anchor => ({ v: 1, page, rects: [{ x: 0.1, y: 0.2, w: 0.5, h: 0.02 }], quote: { exact: 'q', prefix: '', suffix: '' } });
+const anchor = (page = 1): Anchor => ({
+  v: 1,
+  page,
+  rects: [{ x: 0.1, y: 0.2, w: 0.5, h: 0.02 }],
+  quote: { exact: 'q', prefix: '', suffix: '' },
+});
 
 beforeEach(async () => {
   await db.delete();
@@ -40,7 +45,14 @@ describe('documentsRepo', () => {
     expect(await db.documents.get(row.id)).toEqual(row);
     const out = await db.outbox.toArray();
     expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ entity: 'document', entityId: row.id, op: 'upsert', status: 'pending', attempts: 0, payload: row });
+    expect(out[0]).toMatchObject({
+      entity: 'document',
+      entityId: row.id,
+      op: 'upsert',
+      status: 'pending',
+      attempts: 0,
+      payload: row,
+    });
   });
 
   it('rolls back the row if the outbox write fails (atomicity)', async () => {
@@ -80,14 +92,27 @@ describe('annotationsRepo', () => {
   it('mirrors SQL constraints: highlight needs a colour, page must match the anchor', async () => {
     const doc = await documentsRepo.create(newDoc());
     const base = { id: crypto.randomUUID(), documentId: doc.id, body: null, label: null };
-    await expect(annotationsRepo.create({ ...base, kind: 'highlight', page: 1, anchor: anchor(1), colorId: null })).rejects.toThrow();
-    await expect(annotationsRepo.create({ ...base, kind: 'bookmark', page: 2, anchor: anchor(1), colorId: null })).rejects.toThrow();
+    await expect(
+      annotationsRepo.create({ ...base, kind: 'highlight', page: 1, anchor: anchor(1), colorId: null }),
+    ).rejects.toThrow();
+    await expect(
+      annotationsRepo.create({ ...base, kind: 'bookmark', page: 2, anchor: anchor(1), colorId: null }),
+    ).rejects.toThrow();
     expect(await db.annotations.count()).toBe(0);
   });
 
   it('remove tombstones and restore brings back the same id (FR-KEY-06)', async () => {
     const doc = await documentsRepo.create(newDoc());
-    const a = await annotationsRepo.create({ id: crypto.randomUUID(), documentId: doc.id, kind: 'highlight', page: 1, anchor: anchor(1), colorId: 2, body: null, label: null });
+    const a = await annotationsRepo.create({
+      id: crypto.randomUUID(),
+      documentId: doc.id,
+      kind: 'highlight',
+      page: 1,
+      anchor: anchor(1),
+      colorId: 2,
+      body: null,
+      label: null,
+    });
     await annotationsRepo.remove(a.id);
     expect((await db.annotations.get(a.id))?.deletedAt).not.toBeNull();
     const back = await annotationsRepo.restore(a.id);
@@ -100,7 +125,16 @@ describe('annotationsRepo', () => {
 
   it('keeps outbox order across entities (seq increases)', async () => {
     const doc = await documentsRepo.create(newDoc());
-    await annotationsRepo.create({ id: crypto.randomUUID(), documentId: doc.id, kind: 'note', page: 1, anchor: anchor(1), colorId: null, body: 'n', label: null });
+    await annotationsRepo.create({
+      id: crypto.randomUUID(),
+      documentId: doc.id,
+      kind: 'note',
+      page: 1,
+      anchor: anchor(1),
+      colorId: null,
+      body: 'n',
+      label: null,
+    });
     const seqs = (await db.outbox.orderBy('seq').toArray()).map((o) => o.entity);
     expect(seqs).toEqual(['document', 'annotation']); // documents push before their children (FK)
   });
@@ -127,12 +161,51 @@ describe('positionsRepo / settingsRepo', () => {
   });
 
   it('palette defaults to the five meanings and rejects bad entries (FR-HLT-02)', async () => {
-    expect((await settingsRepo.get()).palette.map((p) => p.label)).toEqual(['Key idea', 'Definition', 'Look up', 'Disagree / doubt', 'Revisit']);
+    expect((await settingsRepo.get()).palette.map((p) => p.label)).toEqual([
+      'Key idea',
+      'Definition',
+      'Look up',
+      'Disagree / doubt',
+      'Revisit',
+    ]);
     const long = { id: 1, hex: '#FFE066', label: 'x'.repeat(25) };
     await expect(settingsRepo.update({ palette: [long] })).rejects.toThrow();
     await expect(settingsRepo.update({ palette: [{ id: 1, hex: 'yellow', label: 'Key' }] })).rejects.toThrow();
-    await expect(settingsRepo.update({ palette: [{ id: 2, hex: '#000000', label: 'a' }, { id: 2, hex: '#FFFFFF', label: 'b' }] })).rejects.toThrow();
+    await expect(
+      settingsRepo.update({
+        palette: [
+          { id: 2, hex: '#000000', label: 'a' },
+          { id: 2, hex: '#FFFFFF', label: 'b' },
+        ],
+      }),
+    ).rejects.toThrow();
     await settingsRepo.update({ palette: [{ id: 3, hex: '#7CC4F4', label: 'Look up' }] });
     expect((await settingsRepo.get()).palette).toEqual([{ id: 3, hex: '#7CC4F4', label: 'Look up' }]);
+  });
+});
+
+describe('outboxRepo (FR-SYN-10)', () => {
+  it('lists failed items, retries them as pending, discards one', async () => {
+    const add = (status: 'pending' | 'failed') =>
+      db.outbox.add({
+        entity: 'document',
+        entityId: crypto.randomUUID(),
+        op: 'upsert',
+        payload: {},
+        attempts: 3,
+        status,
+        createdAt: 0,
+      });
+    const a = await add('failed');
+    await add('pending');
+    const c = await add('failed');
+    expect((await outboxRepo.failed()).map((i) => i.seq)).toEqual([a, c]);
+    await outboxRepo.retry(a);
+    expect(await db.outbox.get(a)).toMatchObject({ status: 'pending', attempts: 0 });
+    await outboxRepo.discard(c);
+    expect(await db.outbox.get(c)).toBeUndefined();
+    await add('failed');
+    await outboxRepo.retryAll();
+    expect(await outboxRepo.failed()).toEqual([]);
   });
 });

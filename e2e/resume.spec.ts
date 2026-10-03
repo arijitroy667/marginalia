@@ -174,15 +174,11 @@ test.describe('cross-device resume prompt (T-303, FR-BKM-05)', () => {
     await expect.poll(() => slot(page)).toMatchObject({ page: 4 });
     expect((await slot(page))!.frac).toBeCloseTo(0.3, 2);
 
-    if (
-      await page
-        .getByRole('toolbar', { name: 'Reader toolbar' })
-        .evaluate((el) => el.getBoundingClientRect().bottom <= 1)
-    ) {
-      const box = (await reader(page).boundingBox())!;
-      await page.touchscreen.tap(box.x + 4, box.y + box.height / 2); // phones: bring the bars back (blank tap)
-    }
-    await page.getByRole('link', { name: 'Library' }).click();
+    const library = page.getByRole('link', { name: 'Library' });
+    await library.focus(); // focus inside a hidden bar brings the bars back on phones; no tap timing involved
+    await library.press('Enter');
+    // leaving the reader saves this device's point; let that land before the other device's row "arrives"
+    await expect.poll(async () => (await idb<PositionRow>(page, 'positions'))[0]?.deviceId).not.toBe('other-device');
     await seedRemote(page, doc!.id, 2); // another, newer point elsewhere arrives
     await openFromLibrary(page);
     const second = page.getByRole('status').filter({ hasText: 'Continue from Pixel 7 (p. 2)?' });

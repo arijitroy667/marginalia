@@ -6,14 +6,17 @@ import { platform } from '../../core/platform';
 import { hasPdfHeader, sha256Blob } from '../../shared/utils/hash';
 import type { PasswordPrompt } from '../reader/pdf/pdfjs';
 
-export type AddRejection = 'empty' | 'too-large' | 'not-pdf' | 'corrupt' | 'password-cancelled';
+export type AddRejection = 'empty' | 'too-large' | 'not-pdf' | 'corrupt' | 'password-cancelled' | 'storage';
 export type AddResult =
-  | { kind: 'added' | 'existing'; document: DocumentRow }
-  | { kind: 'rejected'; reason: AddRejection };
+  { kind: 'added' | 'existing'; document: DocumentRow } | { kind: 'rejected'; reason: AddRejection };
 
 const reject = (reason: AddRejection): AddResult => ({ kind: 'rejected', reason });
 
-export async function addPdf(file: File, askPassword: PasswordPrompt, onHashProgress?: (f: number) => void): Promise<AddResult> {
+export async function addPdf(
+  file: File,
+  askPassword: PasswordPrompt,
+  onHashProgress?: (f: number) => void,
+): Promise<AddResult> {
   if (file.size === 0) return reject('empty');
   if (file.size > MAX_FILE_BYTES) return reject('too-large');
   // magic bytes decide, not the (often missing or wrong) MIME type
@@ -32,7 +35,8 @@ export async function addPdf(file: File, askPassword: PasswordPrompt, onHashProg
     return reject(e instanceof PasswordCancelled ? 'password-cancelled' : 'corrupt');
   }
   try {
-    const info = await readPdfInfo(doc, file.name);
+    const info = await readPdfInfo(doc, file.name).catch(() => null);
+    if (!info) return reject('corrupt');
     const cover = await renderCover(doc).catch(() => null);
     const { document, existing } = await libraryRepo.addDocument(
       {
@@ -54,7 +58,7 @@ export async function addPdf(file: File, askPassword: PasswordPrompt, onHashProg
     }
     return { kind: existing ? 'existing' : 'added', document };
   } catch {
-    return reject('corrupt');
+    return reject('storage'); // the PDF opened fine: saving it on this device failed (quota, private mode)
   } finally {
     void doc.loadingTask.destroy(); // PDF.js 6: teardown lives on the loading task
   }

@@ -4,7 +4,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 export const fixture = (name: string) => fileURLToPath(new URL(`../fixtures/pdfs/${name}`, import.meta.url));
-export const sha256 = (name: string) => createHash('sha256').update(readFileSync(fixture(name))).digest('hex');
+export const sha256 = (name: string) =>
+  createHash('sha256')
+    .update(readFileSync(fixture(name)))
+    .digest('hex');
 
 /** All rows of an IndexedDB store of the app DB; Blobs come back as { blob: true, size, type }. */
 export function idb<T = Record<string, unknown>>(page: Page, store: string): Promise<T[]> {
@@ -18,7 +21,10 @@ export function idb<T = Record<string, unknown>>(page: Page, store: string): Pro
           all.onsuccess = () => {
             const out = (all.result as Record<string, unknown>[]).map((row) =>
               Object.fromEntries(
-                Object.entries(row).map(([k, v]) => [k, v instanceof Blob ? { blob: true, size: v.size, type: v.type } : v]),
+                Object.entries(row).map(([k, v]) => [
+                  k,
+                  v instanceof Blob ? { blob: true, size: v.size, type: v.type } : v,
+                ]),
               ),
             );
             open.result.close();
@@ -38,10 +44,11 @@ export async function addViaPicker(page: Page, ...names: string[]) {
 }
 
 /**
- * Playwright's WebKit on Windows (WinCairo port) cannot store Blobs in IndexedDB (writes fail), unlike
- * Safari on macOS/iOS and WebKit on Linux CI. Tests that store a PDF skip only in that combination.
+ * Playwright's WebKit cannot store Blobs in IndexedDB in its ephemeral browser contexts, on Windows and on Linux
+ * alike (verified 2026-10-03, Playwright 1.63: strings and ArrayBuffers store, Blobs abort the transaction).
+ * Safari on macOS/iOS does store them. Tests that store a PDF skip in WebKit; real-device QA covers Safari.
  */
-export const noIdbBlobs = (browserName: string) => browserName === 'webkit' && process.platform === 'win32';
+export const noIdbBlobs = (browserName: string) => browserName === 'webkit';
 
 /** Seed rows straight into the app DB (Dexie creates the schema on first visit), then reload. */
 export async function seed(page: Page, stores: Record<string, unknown[]>) {

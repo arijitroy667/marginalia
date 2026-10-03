@@ -78,7 +78,13 @@ type AnnotationPatch = Partial<Pick<AnnotationRow, 'colorId' | 'body' | 'label' 
 export const annotationsRepo = {
   async create(input: NewAnnotation): Promise<AnnotationRow> {
     const t = now();
-    const row = AnnotationRowSchema.parse({ ...input, createdAt: t, updatedAt: t, deletedAt: null, localUpdatedAt: Date.now() });
+    const row = AnnotationRowSchema.parse({
+      ...input,
+      createdAt: t,
+      updatedAt: t,
+      deletedAt: null,
+      localUpdatedAt: Date.now(),
+    });
     await db.transaction('rw', db.annotations, db.outbox, async () => {
       await db.annotations.add(row);
       await enqueue('annotation', row.id, 'upsert', row);
@@ -179,7 +185,11 @@ export const libraryRepo = {
    * Adds a document with its file and cover in one transaction. Re-checks the hash inside the transaction,
    * so two concurrent adds of the same bytes yield one document (FR-LIB-02).
    */
-  async addDocument(input: NewDocument, file: Blob, cover: Blob | null): Promise<{ document: DocumentRow; existing: boolean }> {
+  async addDocument(
+    input: NewDocument,
+    file: Blob,
+    cover: Blob | null,
+  ): Promise<{ document: DocumentRow; existing: boolean }> {
     return db.transaction('rw', [db.documents, db.outbox, db.files, db.covers], async () => {
       const existing = await documentsRepo.findByHash(input.contentHash);
       if (existing) return { document: existing, existing: true };
@@ -187,6 +197,22 @@ export const libraryRepo = {
       if (cover) await db.covers.put({ documentId: input.id, blob: cover });
       return { document: await documentsRepo.create(input), existing: false };
     });
+  },
+};
+
+/** Outbox items a push rejected permanently (FR-SYN-10, Sync issues screen). */
+export const outboxRepo = {
+  failed: () => db.outbox.where('status').equals('failed').sortBy('seq'),
+  /** Back to pending, so the next sync tries again (e.g. after a server-side fix). */
+  async retry(seq: number): Promise<void> {
+    await db.outbox.update(seq, { status: 'pending', attempts: 0 });
+  },
+  async retryAll(): Promise<void> {
+    await db.outbox.where('status').equals('failed').modify({ status: 'pending', attempts: 0 });
+  },
+  /** Give up on pushing this change; the local row stays as it is on this device. */
+  async discard(seq: number): Promise<void> {
+    await db.outbox.delete(seq);
   },
 };
 

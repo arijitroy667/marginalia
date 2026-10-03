@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import { LibraryPage } from '../features/library/LibraryPage';
+import { SyncIssuesPage } from '../features/sync/SyncIssuesPage';
 import { useTheme } from '../features/theme/useTheme';
 import { en } from '../shared/i18n/en';
 import { Toaster } from '../shared/ui/toast';
@@ -18,10 +19,14 @@ const router = createBrowserRouter([
         children: [
           { path: '/', element: <LibraryPage /> },
           { path: '/settings', element: <Page title={en.settings.title} /> },
+          { path: '/sync-issues', element: <SyncIssuesPage /> },
         ],
       },
       // reader + PDF.js load on demand (NFR-PERF-08)
-      { path: '/read/:documentId', lazy: async () => ({ Component: (await import('../features/reader/ReaderPage')).ReaderPage }) },
+      {
+        path: '/read/:documentId',
+        lazy: async () => ({ Component: (await import('../features/reader/ReaderPage')).ReaderPage }),
+      },
       { path: '/login', element: <Page title={en.auth.title} /> },
     ],
   },

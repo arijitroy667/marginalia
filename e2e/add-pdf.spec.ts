@@ -8,7 +8,10 @@ test.describe('add PDF pipeline (T-105, FR-LIB-01..03)', () => {
   test.beforeEach(async ({ page }) => page.goto('/'));
   const STORES_BLOB = ['adds a PDF', 'same bytes', 'right one adds', 'drag and drop', 'truncated'];
   test.beforeEach(({ browserName }, info) => {
-    test.skip(noIdbBlobs(browserName) && STORES_BLOB.some((t) => info.title.includes(t)), 'WinCairo WebKit: no IndexedDB Blobs');
+    test.skip(
+      noIdbBlobs(browserName) && STORES_BLOB.some((t) => info.title.includes(t)),
+      'WinCairo WebKit: no IndexedDB Blobs',
+    );
   });
 
   test('adds a PDF: hash, metadata, cover, local file, outbox', async ({ page }) => {
@@ -17,7 +20,13 @@ test.describe('add PDF pipeline (T-105, FR-LIB-01..03)', () => {
     await expect(page.getByRole('link', { name: '01-single-column-prose' })).toBeVisible();
 
     const [doc] = await idb<Record<string, unknown>>(page, 'documents');
-    expect(doc).toMatchObject({ contentHash: sha256(PROSE), pageCount: 6, storageMode: 'cloud', deletedAt: null, fileSize: readFileSync(fixture(PROSE)).length });
+    expect(doc).toMatchObject({
+      contentHash: sha256(PROSE),
+      pageCount: 6,
+      storageMode: 'cloud',
+      deletedAt: null,
+      fileSize: readFileSync(fixture(PROSE)).length,
+    });
     const [file] = await idb<{ size: number; blob: { size: number } }>(page, 'files');
     expect(file?.blob.size).toBe(readFileSync(fixture(PROSE)).length);
     const [cover] = await idb<{ blob: { size: number; type: string } }>(page, 'covers');
@@ -77,6 +86,19 @@ test.describe('add PDF pipeline (T-105, FR-LIB-01..03)', () => {
   test('a truncated PDF never crashes the app', async ({ page }) => {
     await addViaPicker(page, '14-corrupt-truncated.pdf');
     // PDF.js may recover a truncated file (xref rebuild) or refuse it; either way the user gets an answer
-    await expect(page.getByText(/^(Added “14-corrupt-truncated”|“14-corrupt-truncated\.pdf” could not be opened.*)$/)).toBeVisible();
+    await expect(
+      page.getByText(/^(Added “14-corrupt-truncated”|“14-corrupt-truncated\.pdf” could not be opened.*)$/),
+    ).toBeVisible();
   });
+});
+
+test('a file the browser refuses to store is reported as a storage problem, not a damaged PDF', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(!noIdbBlobs(browserName), "needs a browser that refuses IndexedDB Blobs (Playwright's WebKit)");
+  await page.goto('/');
+  await addViaPicker(page, '01-single-column-prose.pdf');
+  await expect(page.getByText('could not be saved on this device', { exact: false }).first()).toBeVisible();
+  await expect(page.getByText('may be damaged', { exact: false })).toHaveCount(0);
 });

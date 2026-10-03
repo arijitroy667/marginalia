@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { Link } from 'react-router';
 import { subscribeSync, syncNow, syncStatus, type SyncStatus } from '../../core/sync';
 import { en } from '../../shared/i18n/en';
 
@@ -26,8 +27,14 @@ export function SyncPill() {
     status.state === 'error' || status.state === 'signin' ? 'border-accent text-accent' : 'border-line text-muted';
   return (
     <span role="status" className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${tone}`}>
-      {syncLabel(status)}
-      {status.state === 'error' && (
+      {status.failed ? (
+        <Link to="/sync-issues" className="underline" aria-label={en.sync.open}>
+          {syncLabel(status)}
+        </Link>
+      ) : (
+        syncLabel(status)
+      )}
+      {status.state === 'error' && !status.failed && (
         <button className="min-h-8 rounded px-1 font-medium underline" onClick={syncNow}>
           {en.sync.retry}
         </button>

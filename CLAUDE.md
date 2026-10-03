@@ -9,7 +9,7 @@ A book-style PDF reader where the *line* is a first-class object: one-action hig
 - `pnpm dev` · `pnpm build` · `pnpm typecheck` (app + node + pure-core projects) · `pnpm lint` · `pnpm test` (Vitest unit) · `pnpm e2e` (Playwright vs production build: Chromium, WebKit, Pixel 7, iPhone 14)
 - Hosted Supabase via `.env.local` (see `.env.example`): `pnpm db:push` (migrations) · `pnpm db:types > src/core/supabase/types.ts` · `pnpm test:db` (two-user tenancy suite)
 - Fixtures: `python fixtures/generate.py [--large] [--force]` · real review corpus: `node fixtures/fetch-real.mjs`
-- Linux WebKit/iPhone E2E from Windows (Docker): see `scripts/e2e-linux.sh` · perf budgets: `PERF=1 pnpm exec playwright test e2e/perf.spec.ts --workers 1`
+- Linux E2E from Windows (Docker, same as CI): see `scripts/e2e-linux.sh` · perf budgets: `PERF=1 pnpm exec playwright test e2e/perf.spec.ts --workers 1`
 
 ## Architecture rules (hard)
 1. `src/core/line-engine` and `src/core/anchors` are pure TS: no React, DOM, Supabase, or PDF.js types.
@@ -27,7 +27,7 @@ A book-style PDF reader where the *line* is a first-class object: one-action hig
 - iOS Safari canvas ceiling is 16,777,216 px; cap DPR; free off-screen canvases with `width = height = 0`.
 - PDF.js needs `cmaps/` and `standard_fonts/` served from `public/pdfjs/` and precached for offline.
 - Treat uploaded PDFs as untrusted input (worker rendering, `enableXfa: false`; PDF.js 6 has no `isEvalSupported`/eval paths — ADR 0008).
-- Playwright WebKit on Windows cannot store Blobs in IndexedDB; PDF-storing E2E tests skip there (`noIdbBlobs`), Linux CI runs them.
+- Playwright WebKit (Windows and Linux) cannot store Blobs in IndexedDB in its ephemeral contexts; PDF-storing E2E tests skip in WebKit (`noIdbBlobs`). Safari is covered by the real-device checklist (`docs/qa-checklist.md`).
 - Single-key shortcuts must not fire in text fields or during IME composition. No modifier-only chords.
 - Playwright WebKit is not iOS Safari; real-device checks are required at milestone exits.
 - iOS has no Background Sync: flush the outbox on foreground/online only.
