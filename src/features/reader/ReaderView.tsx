@@ -49,6 +49,7 @@ const setZoom = (v: PdfViewer, value: string) => void (v.currentScaleValue = val
 const rotate = (v: PdfViewer) => void (v.pagesRotation = (v.pagesRotation + 90) % 360); // view only (FR-RDR-09)
 
 const SIDEBAR = ['open', 'closed'] as const;
+const LAYOUTS = ['continuous', 'single', 'spread'] as const; // FR-RDR-10, desktop; device-local
 const CYCLE = ['light', 'warm', 'dark'] as const; // Shift+T
 const COLOUR_SLOTS = ['1', '2', '3', '4', '5', '6', '7', '8'] as const; // active highlight colour: device-local UI pref
 const PRESET_VALUES = new Set(['page-width', 'page-fit', 'auto']);
@@ -102,12 +103,15 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const [chrome, setChrome] = useState(true);
   const [rotation, setRotation] = useState(0);
   const [help, setHelp] = useState(false); // ? cheat sheet (FR-KEY-03)
+  const [layout, setLayout] = usePref('reader.layout', LAYOUTS, 'continuous');
+  const [focusMode, setFocusMode] = useState(false); // distraction-free (FR-RDR-11)
   const [remote, setRemote] = useState<PositionRow | null>(null); // another device's newer point (FR-BKM-05)
   const [sideTab, setSideTab] = useState('pages');
   const [sheetFull, setSheetFull] = useState(false); // phones: panel bottom sheet height
   const themeTrigger = useRef<HTMLButtonElement>(null);
   const compact = useMediaQuery('(max-width: 767px)');
   const compactRef = useRef(compact);
+  const focusModeRef = useRef(false);
   const lastPointer = useRef<PointerKind>('mouse');
   const selection = useReaderStore((s) => s.selection);
   const { palette, warmth, invertImages, keymap: overrides } = useSettings();
@@ -183,6 +187,10 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
       const sel = store.selection;
       switch (action) {
         case 'clear':
+          if (!sel && focusModeRef.current) {
+            setFocusMode(false);
+            return true;
+          }
           if (!sel) return false;
           store.select(null);
           window.getSelection()?.removeAllRanges();
@@ -279,6 +287,13 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
         case 'help':
           setHelp((h) => !h);
           return true;
+        case 'focusMode':
+          if (compactRef.current) return false; // phones already hide their bars while reading
+          setFocusMode((f) => {
+            if (!f) toast(en.reader.focusHint);
+            return !f;
+          });
+          return true;
       }
     };
     const onKey = (e: KeyboardEvent) => {
@@ -327,6 +342,18 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   useEffect(() => {
     compactRef.current = compact;
   }, [compact]);
+  useEffect(() => {
+    focusModeRef.current = focusMode;
+  }, [focusMode]);
+
+  // page layout (FR-RDR-10): PDF.js's own scroll/spread modes; phones always read continuously
+  useEffect(() => {
+    const v = viewerRef.current;
+    if (!pagesReady || !v) return;
+    const mode = compact ? 'continuous' : layout;
+    v.viewer.scrollMode = mode === 'single' ? v.modes.ScrollMode.PAGE : v.modes.ScrollMode.VERTICAL;
+    v.viewer.spreadMode = mode === 'spread' ? v.modes.SpreadMode.ODD : v.modes.SpreadMode.NONE;
+  }, [pagesReady, layout, compact]);
   useEffect(() => () => useReaderStore.setState({ selection: null, notes: null }), []); // selection/editor never outlive the reader
   useEffect(() => clearHistory(), [row.id]); // undo history is per document (FR-KEY-06)
   const onBlankTap = useCallback(() => compactRef.current && setChrome((c) => !c), []); // phones: tap blank toggles chrome
@@ -443,7 +470,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
       <div
         ref={topBar}
         onFocus={() => setChrome(true)}
-        className={compact ? `absolute inset-x-0 top-0 z-10 ${slide('-translate-y-full')}` : ''}
+        className={compact ? `absolute inset-x-0 top-0 z-10 ${slide('-translate-y-full')}` : focusMode ? 'hidden' : ''}
       >
         <header
           role="toolbar"
@@ -522,6 +549,29 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
               </button>
             </>
           )}
+          {!compact && (
+            <>
+              <select
+                aria-label={en.reader.pageLayout}
+                value={layout}
+                onChange={(e) => setLayout(e.target.value as (typeof LAYOUTS)[number])}
+                className="min-h-9 rounded-md border border-line-strong bg-ui-bg px-1 text-ui-fg"
+              >
+                {LAYOUTS.map((l) => (
+                  <option key={l} value={l}>
+                    {en.reader.layouts[l]}
+                  </option>
+                ))}
+              </select>
+              <button
+                className={btn}
+                aria-label={en.reader.focusMode}
+                onClick={() => (setFocusMode(true), toast(en.reader.focusHint))}
+              >
+                ⤢
+              </button>
+            </>
+          )}
           <button
             className={btn}
             aria-label={en.reader.find}
@@ -536,7 +586,16 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
         {finding && ready && <FindBar getViewer={getViewer} onClose={() => setFinding(false)} />}
       </div>
       <div className="relative flex min-h-0 flex-1">
-        {sidebar === 'open' && (
+        {focusMode && (
+          // top edge: hover or click brings the chrome back (FR-RDR-11)
+          <button
+            aria-label={en.reader.showToolbar}
+            className="absolute inset-x-0 top-0 z-30 h-3 opacity-0 focus:opacity-100"
+            onMouseEnter={() => setFocusMode(false)}
+            onClick={() => setFocusMode(false)}
+          />
+        )}
+        {sidebar === 'open' && !focusMode && (
           <>
             {/* phones: bottom sheet over the page with a backdrop (§10.3, Appendix A); md+: docked column */}
             <button

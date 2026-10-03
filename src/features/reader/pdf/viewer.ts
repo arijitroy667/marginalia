@@ -17,7 +17,9 @@ export const pageViewAt = (v: PdfViewer, index: number): PDFPageView | undefined
 /** `fingerprint` keys browser-history entries to this document: our SHA-256, not PDF.js's weak one (FR-LIB-02). */
 export async function createViewer(container: HTMLDivElement, doc: PDFDocumentProxy, fingerprint: string) {
   // imported after pdfjs.ts has set globalThis.pdfjsLib
-  const { EventBus, LinkTarget, PDFFindController, PDFHistory, PDFLinkService, PDFViewer } = await import('pdfjs-dist/web/pdf_viewer.mjs');
+  const { EventBus, LinkTarget, PDFFindController, PDFHistory, PDFLinkService, PDFViewer, ScrollMode, SpreadMode } = await import(
+    'pdfjs-dist/web/pdf_viewer.mjs'
+  );
   const coarse = window.matchMedia('(pointer: coarse)').matches;
   const eventBus = new EventBus();
   const linkService = new PDFLinkService({ eventBus, externalLinkTarget: LinkTarget.BLANK, externalLinkRel: 'noopener noreferrer' });
@@ -45,6 +47,7 @@ export async function createViewer(container: HTMLDivElement, doc: PDFDocumentPr
     eventBus,
     linkService,
     findController,
+    modes: { ScrollMode, SpreadMode }, // page layouts (FR-RDR-10) through PDF.js's public enums
     destroy() {
       pdfHistory.reset();
       findController.setDocument(null as unknown as PDFDocumentProxy);

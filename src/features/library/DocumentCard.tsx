@@ -5,6 +5,7 @@ import type { DocumentRow } from '../../core/db/models';
 import { db } from '../../core/db/schema';
 import { en } from '../../shared/i18n/en';
 import { relativeTime } from '../../shared/utils/text';
+import { DocumentActions } from './DocumentActions';
 
 export type LibraryView = 'grid' | 'list';
 
@@ -26,22 +27,39 @@ function useCoverUrl(documentId: string, ref: RefObject<Element | null>): string
     io.observe(el);
     return () => io.disconnect();
   }, [ref]);
-  const blob = useLiveQuery(async () => (near ? (await db.covers.get(documentId))?.blob : undefined), [near, documentId]);
+  const blob = useLiveQuery(
+    async () => (near ? (await db.covers.get(documentId))?.blob : undefined),
+    [near, documentId],
+  );
   const url = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob]);
   useEffect(() => () => void (url && URL.revokeObjectURL(url)), [url]);
   return url;
 }
 
-export function DocumentCard({ doc, progress, view }: { doc: DocumentRow; progress: number | undefined; view: LibraryView }) {
+export function DocumentCard({
+  doc,
+  progress,
+  view,
+}: {
+  doc: DocumentRow;
+  progress: number | undefined;
+  view: LibraryView;
+}) {
   const ref = useRef<HTMLAnchorElement>(null);
   const cover = useCoverUrl(doc.id, ref);
   const status = progress === undefined ? en.library.notStarted : en.library.progress(Math.round(progress * 100));
-  const when = doc.lastOpenedAt ? en.library.opened(relativeTime(doc.lastOpenedAt)) : en.library.addedAgo(relativeTime(doc.createdAt));
+  const when = doc.lastOpenedAt
+    ? en.library.opened(relativeTime(doc.lastOpenedAt))
+    : en.library.addedAgo(relativeTime(doc.createdAt));
   const grid = view === 'grid';
 
   return (
     // content-visibility lets the browser skip layout/paint of off-screen cards (ADR 0009)
-    <li style={{ contentVisibility: 'auto', containIntrinsicSize: grid ? 'auto 300px' : 'auto 76px' }}>
+    <li
+      className="relative"
+      style={{ contentVisibility: 'auto', containIntrinsicSize: grid ? 'auto 300px' : 'auto 76px' }}
+    >
+      <DocumentActions doc={doc} />
       <Link
         ref={ref}
         to={`/read/${doc.id}`}

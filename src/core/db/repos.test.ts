@@ -7,6 +7,7 @@ import {
   documentsRepo,
   evictable,
   filesRepo,
+  libraryRepo,
   localData,
   metaRepo,
   outboxRepo,
@@ -283,5 +284,51 @@ describe('cacheBudget (FR-SET-02)', () => {
     expect(await cacheBudget.get()).toEqual({ docs: 10, mb: 1000 });
     await metaRepo.set('cacheBudget', { docs: -1, mb: 'lots' });
     expect(await cacheBudget.get()).toEqual({ docs: 5, mb: 500 });
+  });
+});
+
+describe('rename and delete (FR-LIB-07)', () => {
+  const setup = async () => {
+    const doc = await documentsRepo.create(newDoc({ storagePath: 'u/h.pdf' }));
+    await filesRepo.put(doc.id, new Blob(['%PDF']));
+    await db.covers.put({ documentId: doc.id, blob: new Blob(['img']) });
+    const note = await annotationsRepo.create({
+      id: crypto.randomUUID(),
+      documentId: doc.id,
+      kind: 'note',
+      page: 1,
+      anchor: anchor(1),
+      colorId: null,
+      body: 'n',
+      label: null,
+    });
+    return { doc, note };
+  };
+
+  it('rename trims and syncs', async () => {
+    const { doc } = await setup();
+    await libraryRepo.rename(doc.id, '  New title  ');
+    expect((await db.documents.get(doc.id))!.title).toBe('New title');
+    expect((await db.outbox.where('[entity+entityId]').equals(['document', doc.id]).first())?.payload).toMatchObject({
+      title: 'New title',
+    });
+  });
+
+  it('delete file only keeps the book and its annotations, as a device-mode book', async () => {
+    const { doc, note } = await setup();
+    expect(await libraryRepo.deleteFileOnly(doc.id)).toBe('u/h.pdf');
+    expect(await db.files.get(doc.id)).toBeUndefined();
+    expect(await db.documents.get(doc.id)).toMatchObject({ storageMode: 'device', storagePath: null, deletedAt: null });
+    expect((await db.annotations.get(note.id))!.deletedAt).toBeNull();
+  });
+
+  it('delete everything tombstones the book and its annotations and drops file and cover', async () => {
+    const { doc, note } = await setup();
+    expect(await libraryRepo.deleteEverything(doc.id)).toBe('u/h.pdf');
+    expect((await db.documents.get(doc.id))!.deletedAt).not.toBeNull();
+    expect((await db.annotations.get(note.id))!.deletedAt).not.toBeNull();
+    expect(await db.files.count()).toBe(0);
+    expect(await db.covers.count()).toBe(0);
+    expect((await db.outbox.toArray()).map((o) => o.op).sort()).toEqual(['delete', 'delete']);
   });
 });

@@ -372,6 +372,22 @@ describe('stopped sync writes nothing (sign-out with data removal)', () => {
   });
 });
 
+describe('a book deleted on another device (FR-LIB-07)', () => {
+  it('pulling its tombstone removes the local file and cover', async () => {
+    await B.documents.put(doc(1));
+    await B.files.put({ documentId: uuid(1), blob: new Blob(['%PDF']), size: 4, lastAccessAt: 0, pinned: false });
+    await B.covers.put({ documentId: uuid(1), blob: new Blob(['c']) });
+    server.tables.documents.set(
+      uuid(1),
+      serverDoc(1, { deleted_at: '2026-10-03T09:30:00+00:00', updated_at: '2026-10-03T09:30:00+00:00' }),
+    );
+    await createSyncEngine(server, USER, B).pull();
+    expect((await B.documents.get(uuid(1)))!.deletedAt).not.toBeNull();
+    expect(await B.files.count()).toBe(0);
+    expect(await B.covers.count()).toBe(0);
+  });
+});
+
 function serverDoc(n: number, over: Record<string, unknown> = {}): ServerRow {
   return {
     id: uuid(n),

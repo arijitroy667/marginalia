@@ -197,37 +197,52 @@ export function createSyncEngine(
   async function apply(table: SyncTable, row: ServerRow): Promise<void> {
     const p = fromServer(table, row);
     if (!p) return; // invalid for this client version: ignored, never written
-    await db.transaction('rw', [db.outbox, db.documents, db.annotations, db.positions, db.meta], async () => {
-      if (!active()) return;
-      switch (p.table) {
-        case 'documents': {
-          if (await hasPending('document', p.row.id)) return;
-          const cur = await db.documents.get(p.row.id);
-          if (!cur || time(p.row.updatedAt) >= time(cur.updatedAt)) await db.documents.put(p.row);
-          return;
-        }
-        case 'annotations': {
-          if (await hasPending('annotation', p.row.id)) return;
-          const cur = await db.annotations.get(p.row.id);
-          if (!cur || time(p.row.updatedAt) >= time(cur.updatedAt)) await db.annotations.put(p.row);
-          return;
-        }
-        case 'reading_positions': {
-          if (await hasPending('position', p.row.documentId)) return;
-          const cur = await db.positions.get(p.row.documentId);
-          if (!cur || time(p.row.updatedAt) >= time(cur.updatedAt)) await db.positions.put(p.row);
-          return;
-        }
-        case 'profiles': {
-          if (await hasPending('settings', 'profile')) return;
-          const cur = (await db.meta.get('settings'))?.value as StoredSettings | undefined;
-          if (!cur || time(p.updatedAt) >= time(cur.updatedAt)) {
-            const value: StoredSettings = { settings: p.settings, updatedAt: p.updatedAt, localUpdatedAt: Date.now() };
-            await db.meta.put({ key: 'settings', value });
+    await db.transaction(
+      'rw',
+      [db.outbox, db.documents, db.annotations, db.positions, db.meta, db.files, db.covers],
+      async () => {
+        if (!active()) return;
+        switch (p.table) {
+          case 'documents': {
+            if (await hasPending('document', p.row.id)) return;
+            const cur = await db.documents.get(p.row.id);
+            if (!cur || time(p.row.updatedAt) >= time(cur.updatedAt)) {
+              await db.documents.put(p.row);
+              if (p.row.deletedAt) {
+                // deleted on another device (FR-LIB-07): its file and cover go from this one too
+                await db.files.delete(p.row.id);
+                await db.covers.delete(p.row.id);
+              }
+            }
+            return;
+          }
+          case 'annotations': {
+            if (await hasPending('annotation', p.row.id)) return;
+            const cur = await db.annotations.get(p.row.id);
+            if (!cur || time(p.row.updatedAt) >= time(cur.updatedAt)) await db.annotations.put(p.row);
+            return;
+          }
+          case 'reading_positions': {
+            if (await hasPending('position', p.row.documentId)) return;
+            const cur = await db.positions.get(p.row.documentId);
+            if (!cur || time(p.row.updatedAt) >= time(cur.updatedAt)) await db.positions.put(p.row);
+            return;
+          }
+          case 'profiles': {
+            if (await hasPending('settings', 'profile')) return;
+            const cur = (await db.meta.get('settings'))?.value as StoredSettings | undefined;
+            if (!cur || time(p.updatedAt) >= time(cur.updatedAt)) {
+              const value: StoredSettings = {
+                settings: p.settings,
+                updatedAt: p.updatedAt,
+                localUpdatedAt: Date.now(),
+              };
+              await db.meta.put({ key: 'settings', value });
+            }
           }
         }
-      }
-    });
+      },
+    );
   }
 
   async function pull(): Promise<void> {

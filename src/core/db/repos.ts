@@ -271,6 +271,37 @@ export function evictable(files: CachedFile[], maxDocs = OFFLINE_CACHE_DOCS, max
 }
 
 export const libraryRepo = {
+  rename(id: string, title: string): Promise<DocumentRow> {
+    return documentsRepo.update(id, { title: title.trim().slice(0, 500) });
+  },
+
+  /**
+   * "Delete file only (keep my annotations)" (FR-LIB-07): the PDF leaves this device and the account; the book and its
+   * annotations stay, as a device-mode book that can be attached again. Returns the cloud object to remove, if any.
+   */
+  async deleteFileOnly(id: string): Promise<string | null> {
+    return db.transaction('rw', [db.documents, db.outbox, db.files], async () => {
+      const doc = await db.documents.get(id);
+      if (!doc) return null;
+      await db.files.delete(id);
+      await documentsRepo.update(id, { storageMode: 'device', storagePath: null });
+      return doc.storagePath;
+    });
+  },
+
+  /** "Delete everything" (FR-LIB-07): tombstones the book and its annotations (synced), drops file and cover here. */
+  async deleteEverything(id: string): Promise<string | null> {
+    return db.transaction('rw', [db.documents, db.annotations, db.outbox, db.files, db.covers], async () => {
+      const doc = await db.documents.get(id);
+      if (!doc) return null;
+      for (const a of await annotationsRepo.ofDocument(id)) await annotationsRepo.remove(a.id);
+      await documentsRepo.softDelete(id);
+      await db.files.delete(id);
+      await db.covers.delete(id);
+      return doc.storagePath;
+    });
+  },
+
   /**
    * Adds a document with its file and cover in one transaction. Re-checks the hash inside the transaction,
    * so two concurrent adds of the same bytes yield one document (FR-LIB-02).

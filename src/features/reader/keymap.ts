@@ -31,6 +31,7 @@ export type Action =
   | 'lastPage'
   | 'nextPage'
   | 'prevPage'
+  | 'focusMode'
   | 'help';
 
 export type Group = 'lines' | 'annotate' | 'navigate' | 'view';
@@ -76,6 +77,7 @@ export const KEYMAP: readonly Binding[] = [
   { action: 'zoomIn', keys: ['=', '+'], group: 'view', primary: true },
   { action: 'zoomOut', keys: ['-'], group: 'view', primary: true },
   { action: 'zoomReset', keys: ['0'], group: 'view', primary: true },
+  { action: 'focusMode', keys: ['f'], group: 'view' },
   { action: 'help', keys: ['?'], group: 'view' },
 ];
 
@@ -111,6 +113,7 @@ export const REMAPPABLE: readonly Action[] = [
   'goToPage',
   'sidebar',
   'themeMenu',
+  'focusMode',
 ];
 
 /** User remaps (`settings.keymap`, action -> key) applied over the defaults; unknown actions are ignored. */

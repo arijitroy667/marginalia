@@ -68,3 +68,14 @@ export async function downloadDocumentFile(
 }
 
 export { attachFile, HashMismatch, type DownloadProgress } from './blobs';
+
+/**
+ * Remove a PDF from the user's bucket (FR-LIB-07). Best effort: offline or signed out it fails and the object
+ * stays (ponytail: an orphan costs quota until a server-side sweep of objects without a live document).
+ */
+export async function removeCloudFile(storagePath: string): Promise<boolean> {
+  const sb = await supabase();
+  if (!sb) return false;
+  const { error } = await sb.storage.from('pdfs').remove([storagePath]);
+  return !error;
+}
