@@ -27,8 +27,8 @@
    than a page inside 5 s cannot loop). Cursors keep the server's full-precision timestamp. Each row is
    Zod-validated (invalid rows are ignored, never written), skipped if the entity has a pending outbox item, else
    applied when `incoming.updated_at >= local.updated_at` (whole-row LWW by server time, FR-SYN-08).
-5. **Scheduler.** Push then pull on start, `online`, back to the foreground (no Background Sync on iOS), 5 s
-   after an outbox write, every 30 s, and on Retry; one run at a time, a trigger during a run queues one more.
+5. **Scheduler.** Push then pull on start, `online`, back to the foreground (no Background Sync on iOS), 1 s
+   after the last outbox write (debounced), every 30 s, and on Retry; one run at a time, a trigger during a run queues one more.
    Status: Synced · Syncing… · Offline · n pending · Sync error (Retry) / n changes need attention · Sign in to
    sync (FR-SYN-05). No status pill in local-only mode.
 
@@ -63,8 +63,7 @@ feeds inserts and updates through the engine's `apply` — the same validation, 
 a pull; deletes are tombstones, so updates. Each (re)subscription runs a full sync, so events missed while
 disconnected still arrive. supabase-js is imported type-only there, keeping it out of the app shell.
 
-Measured against the hosted project (`e2e/cloud.spec.ts`): a highlight made on device A appears on device B,
-with the book open and no reload, **6.5–7.0 s** after the key press — about 1.5 s after A's push, which itself waits
-the 5 s FR-SYN-03 asks for after a write. The PRD's "≤ 5 s propagation" (FR-SYN-06) therefore holds from the push,
-not from the key press; meeting it end to end needs a shorter post-write delay (open question for the owner).
-
+Measured against the hosted project (`e2e/cloud.spec.ts`): a highlight made on device A appears on device B, with
+the book open and no reload, **~2.9 s** after the key press (1 s debounce, push, then ~1.5 s Realtime delivery) —
+within FR-SYN-06's 5 s. The post-write delay was 5 s at first (6.5–7 s end to end); the owner chose 1 s on
+2026-10-03 and FR-SYN-03 was updated.

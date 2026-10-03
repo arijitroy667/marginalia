@@ -258,7 +258,7 @@ Each row is independently testable. "AC" = acceptance criteria. Test each AC wit
 |---|---|---|---|
 | FR-SYN-01 | P0 | Auth via Supabase: email magic link + Google OAuth; persistent session. | Sign-out offers "Remove data from this device". |
 | FR-SYN-02 | P0 | Local-first writes. | Every mutation commits data **and** an outbox row in one Dexie transaction before the UI confirms. |
-| FR-SYN-03 | P0 | Push: outbox flushes on online/foreground/5 s after enqueue/30 s timer; exponential backoff; idempotent upserts keyed by client-generated UUID; same-entity upserts coalesce. | No outbox item is dropped silently. |
+| FR-SYN-03 | P0 | Push: outbox flushes on online/foreground/1 s after the last enqueue (debounced)/30 s timer; exponential backoff; idempotent upserts keyed by client-generated UUID; same-entity upserts coalesce. | No outbox item is dropped silently. |
 | FR-SYN-04 | P0 | Pull: keyset cursor `(updated_at, id)` per table with a 5 s overlap window; apply by last-write-wins. | Rows with a pending outbox entry are **not** overwritten by pull. |
 | FR-SYN-05 | P0 | Sync status indicator: Synced / Syncing / Offline (n pending) / Error (retry). | |
 | FR-SYN-06 | P1 | Supabase Realtime subscription for `annotations` and `reading_positions`. | ≤ 5 s propagation. |

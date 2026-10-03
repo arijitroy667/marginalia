@@ -101,7 +101,7 @@ test.describe('cloud: auth + sync (T-103, T-300, FR-SYN-01..05)', () => {
     await a.keyboard.press('1');
     const t0 = Date.now();
     await expect(b.locator('.page[data-page-number="1"] .mg-hl')).toHaveCount(2, { timeout: 20_000 });
-    console.log(`realtime: highlight visible on B ${Date.now() - t0} ms after A's key press (push waits 5 s)`);
+    console.log(`realtime: highlight visible on B ${Date.now() - t0} ms after A's key press (push waits 1 s)`);
     await b.getByRole('link', { name: 'Library' }).click();
 
     await b.getByRole('link', { name: 'Settings' }).click();

@@ -1,6 +1,6 @@
 /**
  * When to sync and what to tell the user (FR-SYN-03/05, PRD §8.8). Runs push then pull on start, `online`,
- * returning to the foreground (iOS has no Background Sync), 5 s after an outbox write and every 30 s; retryable
+ * returning to the foreground (iOS has no Background Sync), 1 s after the last outbox write and every 30 s; retryable
  * failures back off 1 s -> 60 s with jitter. One run at a time; a trigger during a run queues one more.
  */
 import { liveQuery } from 'dexie';
@@ -17,7 +17,7 @@ export interface SyncStatus {
 export const BACKOFF_MIN_MS = 1_000;
 export const BACKOFF_MAX_MS = 60_000;
 export const SYNC_INTERVAL_MS = 30_000;
-export const AFTER_WRITE_MS = 5_000;
+export const AFTER_WRITE_MS = 1_000; // debounced: a burst of edits still goes up as one run (owner decision 2026-10-03)
 
 /** Delay before retry `attempt` (0-based): doubling from 1 s, capped at 60 s, ±50 % jitter. */
 export function backoff(attempt: number, random = Math.random): number {
