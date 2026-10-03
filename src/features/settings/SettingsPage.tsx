@@ -2,12 +2,14 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Dialog } from 'radix-ui';
 import { useEffect, useState } from 'react';
 import { CLOUD_STORAGE_BYTES } from '../../config';
-import { documentsRepo, filesRepo } from '../../core/db/repos';
+import { documentsRepo, filesRepo, settingsRepo } from '../../core/db/repos';
+import { db } from '../../core/db/schema';
 import { platform } from '../../core/platform';
 import { useNavigate } from 'react-router';
 import { signOut, unsyncedChanges } from '../../core/auth';
 import { en } from '../../shared/i18n/en';
 import { useAuth } from '../auth/useAuth';
+import { exportJson } from '../export/exportJson';
 
 const size = (n: number) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : `${Math.round(n / 1024 ** 2)} MB`);
 
@@ -69,6 +71,29 @@ export function SettingsPage() {
         )}
       </div>
       <StorageSection cloud={auth.status === 'signed-in'} />
+      <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4">
+        <h2 className="font-medium">{en.settings.data}</h2>
+        <p className="text-sm text-muted">{en.settings.exportAllHint}</p>
+        <button
+          className={`${btn} self-start border border-line-strong`}
+          onClick={() =>
+            void Promise.all([
+              db.documents.toArray(),
+              db.annotations.toArray(),
+              db.positions.toArray(),
+              settingsRepo.get(),
+            ]).then(([documents, annotations, positions, settings]) =>
+              platform.saveFile(
+                `marginalia-export-${new Date().toISOString().slice(0, 10)}.json`,
+                exportJson({ documents, annotations, positions, settings }),
+                'application/json',
+              ),
+            )
+          }
+        >
+          {en.settings.exportAll}
+        </button>
+      </div>
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />

@@ -1,13 +1,17 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Tabs } from 'radix-ui';
+import { DropdownMenu, Tabs } from 'radix-ui';
 import { useState } from 'react';
 import { intersects } from '../../../core/anchors/anchor';
 import type { Anchor } from '../../../core/anchors/types';
 import type { AnnotationKind, AnnotationRow } from '../../../core/db/models';
 import { annotationsRepo } from '../../../core/db/repos';
+import { db } from '../../../core/db/schema';
+import { platform } from '../../../core/platform';
 import { en } from '../../../shared/i18n/en';
 import { BookmarkIcon, EyeIcon, EyeOffIcon, NoteIcon } from '../../../shared/ui/icons';
 import { Markdown } from '../../../shared/ui/Markdown';
+import { exportJson, fileStem } from '../../export/exportJson';
+import { exportMarkdown } from '../../export/exportMarkdown';
 import { useSettings } from '../../settings/useSettings';
 import { inDocumentOrder } from '../navigation';
 import { useReaderStore } from '../store';
@@ -112,14 +116,17 @@ export function Annotations({ documentId, onJump }: { documentId: string; onJump
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-col gap-2 border-b border-line p-2">
-        <input
-          type="search"
-          aria-label={en.reader.filterAnnotations}
-          placeholder={en.reader.filterPlaceholder}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="min-h-9 w-full rounded-md border border-line-strong bg-ui-bg px-2 text-sm text-ui-fg"
-        />
+        <div className="flex gap-1">
+          <input
+            type="search"
+            aria-label={en.reader.filterAnnotations}
+            placeholder={en.reader.filterPlaceholder}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="min-h-9 w-full rounded-md border border-line-strong bg-ui-bg px-2 text-sm text-ui-fg"
+          />
+          <ExportMenu documentId={documentId} />
+        </div>
         <div role="group" aria-label={en.reader.filterByColour} className="flex flex-wrap gap-1">
           {palette.map((p) => (
             <span
@@ -163,5 +170,48 @@ export function Annotations({ documentId, onJump }: { documentId: string; onJump
         ))}
       </Tabs.Root>
     </div>
+  );
+}
+
+/** Export this book's annotations (FR-PNL-03, FR-EXP-01/02). */
+function ExportMenu({ documentId }: { documentId: string }) {
+  const { palette } = useSettings();
+  const run = async (kind: 'md' | 'json') => {
+    const [doc, annotations, position] = await Promise.all([
+      db.documents.get(documentId),
+      annotationsRepo.ofDocument(documentId),
+      db.positions.get(documentId),
+    ]);
+    if (!doc) return;
+    if (kind === 'md')
+      platform.saveFile(`${fileStem(doc.title)}.md`, exportMarkdown(doc, annotations, palette), 'text/markdown');
+    else
+      platform.saveFile(
+        `${fileStem(doc.title)}.json`,
+        exportJson({ documents: [doc], annotations, positions: position ? [position] : [] }),
+        'application/json',
+      );
+  };
+  const item = 'flex min-h-11 cursor-default items-center rounded px-2 outline-none data-[highlighted]:bg-ui-bg';
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger className="min-h-9 shrink-0 rounded-md border border-line-strong px-2 text-sm text-ui-fg">
+        {en.reader.exportMenu}
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={4}
+          className="z-50 min-w-48 rounded-lg border border-line bg-surface p-1 text-sm text-ui-fg shadow-lg"
+        >
+          <DropdownMenu.Item className={item} onSelect={() => void run('md')}>
+            {en.reader.exportMarkdown}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item className={item} onSelect={() => void run('json')}>
+            {en.reader.exportJson}
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }

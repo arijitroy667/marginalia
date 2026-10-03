@@ -14,9 +14,16 @@ export interface Platform {
   deviceLabel(): string;
   /** Copy plain text to the clipboard; false if refused. */
   copyText(text: string): Promise<boolean>;
+  /** Hand a generated file to the user (download in browsers; share sheet / Files in a native wrapper). */
+  saveFile(name: string, content: string, type: string): void;
 }
 
 export const platform: Platform = {
+  saveFile(name, content, type) {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    Object.assign(document.createElement('a'), { href: url, download: name }).click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
   deviceLabel: () => labelFromUserAgent(navigator.userAgent, navigator.maxTouchPoints),
   async copyText(text) {
     try {

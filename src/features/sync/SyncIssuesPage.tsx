@@ -1,20 +1,18 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { outboxRepo } from '../../core/db/repos';
+import { platform } from '../../core/platform';
 import { syncNow } from '../../core/sync';
 import { en } from '../../shared/i18n/en';
 
 const time = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 /** Downloads the failed items so nothing is lost even if they are discarded (FR-SYN-10). */
-function exportJson(items: unknown[]) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' }));
-  const a = Object.assign(document.createElement('a'), {
-    href: url,
-    download: `marginalia-sync-issues-${new Date().toISOString().slice(0, 10)}.json`,
-  });
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const exportJson = (items: unknown[]) =>
+  platform.saveFile(
+    `marginalia-sync-issues-${new Date().toISOString().slice(0, 10)}.json`,
+    JSON.stringify(items, null, 2),
+    'application/json',
+  );
 
 /** "Sync issues" (FR-SYN-10): failed outbox items with their error; retry, discard, export as JSON. */
 export function SyncIssuesPage() {

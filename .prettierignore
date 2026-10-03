@@ -9,3 +9,4 @@ public/pdfjs
 spikes
 supabase/.temp
 *.pdf
+src/features/reader/lines/__goldens__
