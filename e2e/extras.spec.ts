@@ -64,10 +64,11 @@ test.describe('library and reader extras (T-408, FR-LIB-07/08, FR-RDR-10/11)', (
     await page.getByRole('combobox', { name: 'Page layout' }).selectOption('spread');
     await expect
       .poll(async () => {
-        const [a, b] = await Promise.all(
-          [1, 2].map((n) => page.locator(`.page[data-page-number="${n}"]`).boundingBox()),
+        const [one, a, b] = await Promise.all(
+          [1, 2, 3].map((n) => page.locator(`.page[data-page-number="${n}"]`).boundingBox()),
         );
-        return Math.abs(a!.y - b!.y) < 2 && b!.x > a!.x + a!.width / 2; // side by side
+        // book spread: the first page alone, then 2|3 side by side
+        return a!.y > one!.y + one!.height / 2 && Math.abs(a!.y - b!.y) < 2 && b!.x > a!.x + a!.width / 2;
       })
       .toBe(true);
     const hl = (await page.locator('.page[data-page-number="2"] .mg-hl').boundingBox())!;
@@ -79,6 +80,22 @@ test.describe('library and reader extras (T-408, FR-LIB-07/08, FR-RDR-10/11)', (
     await expect(page.locator('.page[data-page-number="3"]')).toBeHidden();
     await page.reload();
     await expect(page.getByRole('combobox', { name: 'Page layout' })).toHaveValue('single'); // remembered on this device
+  });
+
+  test('spread with an oversized cover: the zoom fits the text pages, not the cover', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'desktop layouts');
+    await openDoc(page, '17-book-cover.pdf');
+    await page.getByRole('combobox', { name: 'Page layout' }).selectOption('spread');
+    const scroller = (await page.locator('.reader-scroll').boundingBox())!;
+    await expect
+      .poll(async () => {
+        const [a, b] = await Promise.all(
+          [2, 3].map((n) => page.locator(`.page[data-page-number="${n}"]`).boundingBox()),
+        );
+        return a!.width + b!.width > scroller.width * 0.8 && Math.abs(a!.width - b!.width) < 2; // two pages fill the width
+      })
+      .toBe(true);
+    await expect(page.getByRole('combobox', { name: 'Zoom' })).toHaveValue('page-width'); // still "Fit width"
   });
 
   test('distraction-free: F hides the chrome; Esc or the top edge brings it back', async ({ page, isMobile }) => {

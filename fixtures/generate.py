@@ -708,6 +708,21 @@ def f16_outline_links():
     f.save()
 
 
+def f17_book_cover():
+    """A book whose cover page is ~3x the size of its text pages (a scanned cover): spread zoom fit (FR-RDR-10)."""
+    if not fresh("17-book-cover.pdf"):
+        return
+    doc = fitz.open()
+    doc.new_page(width=1275, height=1650).insert_text((300, 800), "COVER", fontname="hebo", fontsize=120)
+    for pno in range(2, 8):
+        p = doc.new_page(width=432, height=648)
+        for k in range(40):
+            p.insert_text((54, 60 + k * 13.5), f"Page {pno}, line {k + 1}: ordinary body text of the book.",
+                          fontname="tiro", fontsize=10)
+    doc.save(OUT / "17-book-cover.pdf")
+    print("  17-book-cover.pdf")
+
+
 def f13_password():
     if not fresh("13-password.pdf"):
         return
@@ -748,5 +763,6 @@ if __name__ == "__main__":
     f14_corrupt()
     f15_geometry()
     f16_outline_links()
+    f17_book_cover()
     if "--large" in sys.argv:
         f12_large()

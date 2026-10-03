@@ -168,7 +168,7 @@ Each row is independently testable. "AC" = acceptance criteria. Test each AC wit
 | FR-RDR-07 | P0 | Native text selection and copy. | Text layer is selectable; copy preserves line breaks reasonably. |
 | FR-RDR-08 | P0 | Links: internal jumps + external links. | External links open in a new tab with `rel="noopener noreferrer"`; browser Back returns to prior position after an internal jump (history entries for jumps). |
 | FR-RDR-09 | P0 | Rotate view in 90° steps. | Stored anchors are unrotated-space and stay correct (property test in §12). |
-| FR-RDR-10 | P1 | Single-page and two-page-spread modes (desktop). | Annotations and gutter align in all modes. |
+| FR-RDR-10 | P1 | Single-page and two-page-spread modes (desktop). | Annotations and gutter align in all modes. Spreads pair as in print (page 1 alone, then 2\|3); fit-width/fit-page fit the document's most common page size, so an oversized cover never shrinks the text pages. |
 | FR-RDR-11 | P1 | Distraction-free mode. | Hides chrome; tap/click edge or `Esc` restores. |
 | FR-RDR-12 | P0 | Error states: corrupt, unsupported, wrong password, offline-without-cache. | Each has human-readable copy and a recovery action. |
 | FR-RDR-13 | P2 | Render embedded PDF form/annotation layers; print. | Behind a flag. |

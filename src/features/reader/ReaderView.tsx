@@ -39,7 +39,7 @@ import { usePinch } from './gestures/usePinch';
 import { usePageTheme } from './pageTheme';
 import type { PointerKind } from './gestures/tap';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
-import { createViewer, ZOOM_MAX, ZOOM_MIN, type PdfViewer, type Viewer } from './pdf/viewer';
+import { createViewer, pageViewAt, ZOOM_MAX, ZOOM_MIN, type PdfViewer, type Viewer } from './pdf/viewer';
 import type { OutlineItem } from './sidebar/Outline';
 import { Sidebar } from './sidebar/Sidebar';
 import { useResume } from './useResume';
@@ -48,14 +48,62 @@ const PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 const clamp = (s: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s));
 
 // PDF.js viewer is external mutable state: writes go through these helpers, not component scope
-const setZoom = (v: PdfViewer, value: string) => void (v.currentScaleValue = value);
+const PRESET_VALUES = new Set(['page-width', 'page-fit', 'auto']);
+/** Fit presets we applied as a number (see fitScale): the preset stays in effect while the scale is unchanged. */
+const fits = new WeakMap<PdfViewer, { preset: string; scale: number }>();
+const fitPreset = (v: PdfViewer, scale = v.currentScale): string | undefined => {
+  if (PRESET_VALUES.has(v.currentScaleValue)) return v.currentScaleValue;
+  const fit = fits.get(v);
+  return fit && Math.abs(fit.scale - scale) < 1e-6 ? fit.preset : undefined;
+};
+
+/** PDF.js fits a preset to the current page, so a book's oversized cover would shrink every other page (FR-RDR-10).
+ *  When the current page is not the document's most common size, fit that size instead, with PDF.js's own formula
+ *  (pdf_viewer.mjs #setScale: 40 px scrollbar and 5 px vertical padding; spreads fit two pages across). */
+function fitScale(v: PdfViewer, preset: string): number | null {
+  const size = (i: number) => {
+    const p = pageViewAt(v, i);
+    return p ? `${Math.round(p.viewport.width / p.scale)}x${Math.round(p.viewport.height / p.scale)}` : '';
+  };
+  const counts = new Map<string, number>();
+  let common = '';
+  for (let i = 0; i < v.pagesCount; i++) {
+    const k = size(i);
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+    if (counts.get(k)! > (counts.get(common) ?? 0)) common = k;
+  }
+  if (!common || common === size(v.currentPageNumber - 1)) return null; // PDF.js's preset already fits it
+  const [w, h] = common.split('x').map(Number) as [number, number];
+  const width = (v.container.clientWidth - 40) / w / (v.spreadMode > 0 ? 2 : 1);
+  const height = (v.container.clientHeight - 5) / h;
+  if (preset === 'page-width') return width;
+  if (preset === 'page-fit') return Math.min(width, height);
+  return Math.min(1.25, h >= w ? width : Math.min(width, height)); // 'auto'
+}
+
+const setZoom = (v: PdfViewer, value: string) => {
+  const scale = PRESET_VALUES.has(value) ? fitScale(v, value) : null;
+  if (scale === null) {
+    fits.delete(v);
+    v.currentScaleValue = value;
+  } else {
+    fits.set(v, { preset: value, scale });
+    v.currentScale = scale;
+  }
+};
+/** Re-fit after page sizes or the layout change, only when the fit moves: a re-applied scale re-renders the pages. */
+const refit = (v: PdfViewer) => {
+  const preset = fitPreset(v);
+  if (!preset) return;
+  const scale = fitScale(v, preset);
+  if (scale === null ? fits.has(v) : Math.abs(scale - v.currentScale) > 1e-3) setZoom(v, preset);
+};
 const rotate = (v: PdfViewer) => void (v.pagesRotation = (v.pagesRotation + 90) % 360); // view only (FR-RDR-09)
 
 const SIDEBAR = ['open', 'closed'] as const;
 const LAYOUTS = ['continuous', 'single', 'spread'] as const; // FR-RDR-10, desktop; device-local
 const CYCLE = ['light', 'warm', 'dark'] as const; // Shift+T
 const COLOUR_SLOTS = ['1', '2', '3', '4', '5', '6', '7', '8'] as const; // active highlight colour: device-local UI pref
-const PRESET_VALUES = new Set(['page-width', 'page-fit', 'auto']);
 
 function zoomStep(v: PdfViewer, dir: 1 | -1) {
   const cur = v.currentScale;
@@ -153,14 +201,16 @@ export function ReaderView({
       if (cancelled) return v.destroy();
       created = v;
       v.eventBus.on('pagesinit', () => {
-        v.viewer.currentScaleValue = readPref('reader.zoom', ZOOM_DEFAULTS, 'page-width'); // FR-SET-02; device-local, never synced
+        setZoom(v.viewer, readPref('reader.zoom', ZOOM_DEFAULTS, 'page-width')); // FR-SET-02; device-local, never synced
         container.current?.focus({ preventScroll: true }); // arrows/space scroll right away
         setPagesReady(true);
       });
       v.eventBus.on('pagechanging', (e: { pageNumber: number }) => setPage(e.pageNumber));
       v.eventBus.on('scalechanging', (e: { scale: number; presetValue?: string }) =>
-        setScale({ value: e.scale, preset: e.presetValue }),
+        setScale({ value: e.scale, preset: e.presetValue ?? fitPreset(v.viewer, e.scale) }),
       );
+      // every page's size is known only now: re-fit a preset to the document's common page size
+      v.eventBus.on('pagesloaded', () => refit(v.viewer));
       v.eventBus.on('rotationchanging', (e: { pagesRotation: number }) => setRotation(e.pagesRotation));
       viewerRef.current = v;
       setReady(true);
@@ -309,7 +359,7 @@ export function ReaderView({
           zoomStep(v, action === 'zoomIn' ? 1 : -1); // instead of the browser's page zoom
           return true;
         case 'zoomReset':
-          v.currentScaleValue = 'page-width';
+          setZoom(v, 'page-width');
           return true;
         case 'help':
           setHelp((h) => !h);
@@ -376,7 +426,9 @@ export function ReaderView({
     if (!pagesReady || !v) return;
     const mode = compact ? 'continuous' : layout;
     v.viewer.scrollMode = mode === 'single' ? v.modes.ScrollMode.PAGE : v.modes.ScrollMode.VERTICAL;
-    v.viewer.spreadMode = mode === 'spread' ? v.modes.SpreadMode.ODD : v.modes.SpreadMode.NONE;
+    // book spreads: the cover alone, then 2|3, 4|5 as in print
+    v.viewer.spreadMode = mode === 'spread' ? v.modes.SpreadMode.EVEN : v.modes.SpreadMode.NONE;
+    refit(v.viewer); // two pages across fit differently from one
   }, [pagesReady, layout, compact]);
   useEffect(() => () => useReaderStore.setState({ selection: null, notes: null }), []); // selection/editor never outlive the reader
   useEffect(() => clearHistory(), [row.id]); // undo history is per document (FR-KEY-06)
@@ -421,7 +473,8 @@ export function ReaderView({
     if (!ready || !el) return;
     const ro = new ResizeObserver(() => {
       const v = viewerRef.current?.viewer;
-      if (v && PRESET_VALUES.has(v.currentScaleValue)) setZoom(v, v.currentScaleValue);
+      const preset = v && fitPreset(v);
+      if (v && preset) setZoom(v, preset);
     });
     ro.observe(el);
     return () => ro.disconnect();

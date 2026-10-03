@@ -20,6 +20,7 @@ so licensing is clean and line ground truth is known by construction (`truth/*.j
 | 12 | `12-large-500p.pdf` | 520 pages, ~40 MB (generated with `--large`; git-ignored) |
 | 13 | `13-password.pdf` | user password `marginalia` |
 | 14 | `14-corrupt-truncated.pdf`, `14b-not-a-pdf.pdf` | error states, magic-byte rejection |
+| 17 | `17-book-cover.pdf` | cover ~3x the size of the text pages: spread pairing and zoom fit |
 
 Truth rects use the text-layer box (`top = baseline - 0.8 * size`, `height = size`), normalised 0..1 in the
 page's displayed space (intrinsic `/Rotate` applied), top-left origin.
