@@ -6,12 +6,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, supabaseConfig } from '../supabase/client';
 import { createBlobSync, downloadFile, type DownloadProgress } from './blobs';
 import { createSyncEngine } from './engine';
+import { subscribeRealtime } from './realtime';
 import { createScheduler, type Scheduler, type SyncStatus } from './scheduler';
 import { supabaseTransport } from './supabaseTransport';
 
 let current: Scheduler | null = null;
 const listeners = new Set<() => void>();
 let unsubscribe: (() => void) | undefined;
+let unsubscribeRealtime: (() => void) | undefined;
 const emit = () => listeners.forEach((l) => l());
 
 export function startSync(sb: SupabaseClient, userId: string, onAuthError?: () => void): void {
@@ -24,10 +26,14 @@ export function startSync(sb: SupabaseClient, userId: string, onAuthError?: () =
   current = createScheduler(withFiles, onAuthError ? { onAuthError } : {});
   unsubscribe = current.subscribe(emit);
   current.start();
+  const scheduler = current;
+  unsubscribeRealtime = subscribeRealtime(sb, userId, engine.apply, () => void scheduler.run()); // FR-SYN-06
   emit();
 }
 
 export function stopSync(): void {
+  unsubscribeRealtime?.();
+  unsubscribeRealtime = undefined;
   unsubscribe?.();
   current?.stop();
   current = null;

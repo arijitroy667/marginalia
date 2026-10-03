@@ -92,6 +92,16 @@ test.describe('cloud: auth + sync (T-103, T-300, FR-SYN-01..05)', () => {
     });
     await expect(b.locator('.page[data-page-number="1"] .mg-hl')).toHaveCount(1); // A's highlight on B's copy
     expect((await idb<{ blob: { size: number } }>(b, 'files'))[0]?.blob.size).toBeGreaterThan(1000);
+
+    // live updates (T-304, FR-SYN-06): B keeps the book open; a highlight A makes appears without a reload
+    await a.getByRole('link', { name: /01-single-column-prose/ }).click();
+    await expect(a.locator('.page[data-page-number="1"] .canvasWrapper canvas').first()).toBeVisible();
+    const [r2] = await textRows(a, 1, 10);
+    await a.mouse.click(r2.x, r2.y);
+    await a.keyboard.press('1');
+    const t0 = Date.now();
+    await expect(b.locator('.page[data-page-number="1"] .mg-hl')).toHaveCount(2, { timeout: 20_000 });
+    console.log(`realtime: highlight visible on B ${Date.now() - t0} ms after A's key press (push waits 5 s)`);
     await b.getByRole('link', { name: 'Library' }).click();
 
     await b.getByRole('link', { name: 'Settings' }).click();
@@ -102,6 +112,6 @@ test.describe('cloud: auth + sync (T-103, T-300, FR-SYN-01..05)', () => {
     await expect(b).toHaveURL(/\/login$/);
     expect(await idb(b, 'documents')).toEqual([]);
     expect(await idb(b, 'annotations')).toEqual([]);
-    expect((await admin.from('annotations').select('id').eq('user_id', userId)).data).toHaveLength(1); // still in the account
+    expect((await admin.from('annotations').select('id').eq('user_id', userId)).data).toHaveLength(2); // still in the account
   });
 });

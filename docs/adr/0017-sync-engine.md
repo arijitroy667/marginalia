@@ -55,3 +55,16 @@ server row. Annotations and positions then push under the adopted id in the same
 metadata (title, last opened) yields to the existing row. Tested with two offline "devices"
 (`engine.test.ts`); the E2E with two browser contexts needs the live project (T-305).
 
+## Realtime (T-304, FR-SYN-06)
+
+`0002_realtime.sql` adds `annotations` and `reading_positions` to the `supabase_realtime` publication; Realtime
+applies RLS, and the client also filters `user_id=eq.<uid>`. One channel per signed-in user (`core/sync/realtime.ts`)
+feeds inserts and updates through the engine's `apply` — the same validation, pending-edit protection and LWW as
+a pull; deletes are tombstones, so updates. Each (re)subscription runs a full sync, so events missed while
+disconnected still arrive. supabase-js is imported type-only there, keeping it out of the app shell.
+
+Measured against the hosted project (`e2e/cloud.spec.ts`): a highlight made on device A appears on device B,
+with the book open and no reload, **6.5–7.0 s** after the key press — about 1.5 s after A's push, which itself waits
+the 5 s FR-SYN-03 asks for after a write. The PRD's "≤ 5 s propagation" (FR-SYN-06) therefore holds from the push,
+not from the key press; meeting it end to end needs a shorter post-write delay (open question for the owner).
+
