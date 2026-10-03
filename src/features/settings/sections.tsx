@@ -158,7 +158,7 @@ export function PaletteSection() {
                   className={`${field} min-w-0 flex-1`}
                 />
                 <button
-                  className={btn}
+                  className={`${btn} min-w-11`}
                   disabled={palette.length <= 1}
                   onClick={() => remove(p)}
                   aria-label={en.settings.removeColour(p.label)}

@@ -17,6 +17,7 @@ test.describe('library-wide annotation search (T-409, FR-PNL-02)', () => {
     await expect(page.getByRole('textbox', { name: 'Note' })).toBeFocused();
     await page.keyboard.type('Remember the marginalia argument');
     await page.keyboard.press(`${PRIMARY}+Enter`);
+    await expect(page.locator('.mg-note-btn')).toHaveCount(1); // saved
     await page.goto('/');
     await addViaPicker(page, '02-two-column-ieee.pdf');
     await expect(page.getByRole('link', { name: /02-two-column-ieee/ })).toBeVisible();

@@ -994,7 +994,7 @@ Playwright's WebKit is **not** iOS Safari; real-device passes are mandatory at M
 | Key | Action |
 |---|---|
 | Click / tap a line | Select line, show toolbar |
-| `↑` `↓` or `K` `J` | Move line cursor (only when a line is selected; otherwise arrows scroll) |
+| `↑` `↓` or `K` `J` | Move line cursor (only when a line is selected; otherwise arrows scroll and `J`/`K` select the reading line, so every line action is reachable by keyboard — NFR-A11Y-01) |
 | `Shift+↑` `Shift+↓` | Extend selection by line (P1) |
 | `H` | Highlight selected line with the active colour |
 | `1`–`8` | With a line selected: apply the Nth palette colour (toolbar order). With none: make it the active colour (ADR 0011) |

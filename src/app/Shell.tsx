@@ -12,7 +12,7 @@ export function Shell() {
     <div className="flex h-dvh flex-col">
       <a
         href="#main"
-        className="sr-only z-50 rounded bg-accent px-3 py-2 text-accent-fg focus:not-sr-only focus:absolute focus:top-2 focus:left-2"
+        className="sr-only z-50 rounded bg-accent px-3 py-2 text-accent-fg focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:flex focus:min-h-11 focus:items-center"
       >
         {en.app.skipToContent}
       </a>

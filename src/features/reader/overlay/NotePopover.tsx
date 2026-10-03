@@ -32,7 +32,14 @@ function NoteEditor({ documentId, anchor, note }: { documentId: string; anchor: 
     const t = timer;
     const s = session;
     const l = latest;
+    // tab closed or reloaded with the editor open: write the latest text now instead of after the debounce
+    const flush = () => {
+      clearTimeout(t.current);
+      void saveNote(documentId, anchor, (s.current ??= noteSession(note)), l.current);
+    };
+    window.addEventListener('pagehide', flush);
     return () => {
+      window.removeEventListener('pagehide', flush);
       clearTimeout(t.current);
       void closeNote(documentId, anchor, (s.current ??= noteSession(note)), l.current).catch(() =>
         toast(en.reader.saveFailed),

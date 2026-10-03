@@ -41,3 +41,8 @@ OS/browser version and result next to each item.
 - [ ] Offline: open a cached PDF in airplane mode, annotate, reconnect, changes sync.
 - [ ] `navigator.storage.persist()` granted (Android) / installed app keeps data after a week (iOS).
 - [ ] Memory: 500-page fixture, scroll end to end and pinch repeatedly — no reload; peak < 300 MB if measurable.
+- [ ] Screen readers (T-402): VoiceOver on iPhone and on Mac Safari, TalkBack on Android, NVDA + Firefox or
+      Chrome on Windows — add a PDF, open it, select a line (J), highlight (H), add a note (N), find it in the panel,
+      sign out. Every control is announced with its name and state; toasts are read politely; focus returns to the
+      reader after closing a popover or dialog.
+

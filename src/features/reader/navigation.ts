@@ -5,6 +5,7 @@
 import { anchorFromLine, pageAnchor } from '../../core/anchors/anchor';
 import { fromCanonical, toCanonical } from '../../core/anchors/geometry';
 import type { Anchor } from '../../core/anchors/types';
+import type { Line, PageLines } from '../../core/line-engine';
 import type { AnnotationRow } from '../../core/db/models';
 import { getPageLines } from './lines/pageLines';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
@@ -44,7 +45,14 @@ export function readingPoint(v: PdfViewer, el: HTMLElement, inset = READING_INSE
 }
 
 /** Scrolls so the canonical point (page, x, y) sits at the reading slot. */
-export function scrollToPoint(v: PdfViewer, el: HTMLElement, page: number, y: number, x = 0.5, inset = READING_INSET_PX): void {
+export function scrollToPoint(
+  v: PdfViewer,
+  el: HTMLElement,
+  page: number,
+  y: number,
+  x = 0.5,
+  inset = READING_INSET_PX,
+): void {
   const pv = pageViewAt(v, page - 1);
   if (!pv) return;
   const d = fromCanonical({ x, y, w: 0, h: 0 }, v.pagesRotation);
@@ -55,13 +63,21 @@ export function scrollToPoint(v: PdfViewer, el: HTMLElement, page: number, y: nu
 export interface LineTarget {
   anchor: Anchor;
   text: string;
+  /** The engine line, when the page has text (keyboard selection starts from it). */
+  source?: { pl: PageLines; line: Line };
 }
 
 /**
  * The reading line (PRD §5): the first line, in reading order, whose top edge is at or below the reading slot,
  * on the slot's page or else the next one. A page without text yields a whole-page anchor (FR-LIN-06).
  */
-export async function readingLine(pdf: PDFDocumentProxy, docHash: string, v: PdfViewer, el: HTMLElement, inset = READING_INSET_PX): Promise<LineTarget | null> {
+export async function readingLine(
+  pdf: PDFDocumentProxy,
+  docHash: string,
+  v: PdfViewer,
+  el: HTMLElement,
+  inset = READING_INSET_PX,
+): Promise<LineTarget | null> {
   const p = readingPoint(v, el, inset);
   if (!p) return null;
   const slot = el.getBoundingClientRect().top + inset;
@@ -73,7 +89,7 @@ export async function readingLine(pdf: PDFDocumentProxy, docHash: string, v: Pdf
     const r = div.getBoundingClientRect();
     const frac = (slot - r.top) / r.height;
     const line = pl.lines.find((l) => fromCanonical(l.rect, v.pagesRotation).y >= frac - 1e-4);
-    if (line) return { anchor: anchorFromLine(pl, line), text: line.text };
+    if (line) return { anchor: anchorFromLine(pl, line), text: line.text, source: { pl, line } };
   }
   return null;
 }
@@ -89,12 +105,21 @@ export function jumpToAnchor(v: PdfViewer, el: HTMLElement, anchor: Anchor, inse
 const position = (a: Anchor) => a.page + Math.min(a.rects[0]?.y ?? 0, 0.999);
 
 /** Bookmarks in document order (page, then height on the page). */
-export const inDocumentOrder = (rows: AnnotationRow[]) => [...rows].sort((a, b) => position(a.anchor) - position(b.anchor));
+export const inDocumentOrder = (rows: AnnotationRow[]) =>
+  [...rows].sort((a, b) => position(a.anchor) - position(b.anchor));
 
 /** `]` / `[`: the first bookmark strictly after / before the reading slot (FR-BKM-03); a bookmark at the slot is "here". */
-export function adjacentBookmark(rows: AnnotationRow[], v: PdfViewer, el: HTMLElement, dir: 1 | -1, inset = READING_INSET_PX): AnnotationRow | undefined {
+export function adjacentBookmark(
+  rows: AnnotationRow[],
+  v: PdfViewer,
+  el: HTMLElement,
+  dir: 1 | -1,
+  inset = READING_INSET_PX,
+): AnnotationRow | undefined {
   const p = readingPoint(v, el, inset);
   const here = p ? p.page + Math.min(p.y, 0.999) : 0;
   const sorted = inDocumentOrder(rows);
-  return dir > 0 ? sorted.find((b) => position(b.anchor) > here + 0.005) : sorted.findLast((b) => position(b.anchor) < here - 0.005);
+  return dir > 0
+    ? sorted.find((b) => position(b.anchor) > here + 0.005)
+    : sorted.findLast((b) => position(b.anchor) < here - 0.005);
 }

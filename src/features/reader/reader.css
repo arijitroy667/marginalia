@@ -174,6 +174,11 @@
   min-width: 40px;
   padding: 0;
 }
+@media (pointer: coarse) {
+  .mg-toolbar .mg-swatch {
+    min-width: 44px; /* NFR-A11Y-02 touch target */
+  }
+}
 .mg-swatch > span {
   display: grid;
   place-items: center;

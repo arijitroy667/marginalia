@@ -28,6 +28,7 @@ import { Overlays } from './overlay/Overlays';
 import {
   ensureVisible,
   extendCursor,
+  lineSelection,
   moveCursor,
   useLineTap,
   useNativeSelection,
@@ -114,7 +115,7 @@ export function ReaderView({
   const [rotation, setRotation] = useState(0);
   const [help, setHelp] = useState(false); // ? cheat sheet (FR-KEY-03)
   const [layout, setLayout] = usePref('reader.layout', LAYOUTS, 'continuous');
-  const [focusMode, setFocusMode] = useState(false); // distraction-free (FR-RDR-11)
+  const [focusMode, setFocusModeState] = useState(false); // distraction-free (FR-RDR-11)
   const [remote, setRemote] = useState<PositionRow | null>(null); // another device's newer point (FR-BKM-05)
   const [sideTab, setSideTab] = useState('pages');
   const [sheetFull, setSheetFull] = useState(false); // phones: panel bottom sheet height
@@ -122,6 +123,11 @@ export function ReaderView({
   const compact = useMediaQuery('(max-width: 767px)');
   const compactRef = useRef(compact);
   const focusModeRef = useRef(false);
+  // the key handler reads the ref; set both at once so a quick F then Esc never sees a stale value
+  const setFocusMode = useCallback((on: boolean) => {
+    focusModeRef.current = on;
+    setFocusModeState(on);
+  }, []);
   const lastPointer = useRef<PointerKind>('mouse');
   const selection = useReaderStore((s) => s.selection);
   const { palette, warmth, invertImages, keymap: overrides } = useSettings();
@@ -207,7 +213,18 @@ export function ReaderView({
           return true;
         case 'lineDown':
         case 'lineUp':
-          if (sel?.kind !== 'line') return false; // with no cursor, arrows keep scrolling natively (FR-LIN-03)
+          if (sel?.kind !== 'line') {
+            // with no cursor, arrows keep scrolling natively (FR-LIN-03); J/K start the cursor on the reading line,
+            // so line actions are reachable without a pointer (NFR-A11Y-01)
+            if (key !== 'j' && key !== 'k') return false;
+            void readingLine(pdf, row.contentHash, v, container.current!, getInset()).then((t) => {
+              if (!t?.source || !container.current) return;
+              const next = lineSelection(t.source.pl, t.source.line);
+              useReaderStore.getState().select(next);
+              ensureVisible(v, container.current, next);
+            });
+            return true;
+          }
           void moveCursor(pdf, row.contentHash, action === 'lineDown' ? 1 : -1).then((next) => {
             if (!next || !container.current) return;
             useReaderStore.getState().select(next);
@@ -299,10 +316,8 @@ export function ReaderView({
           return true;
         case 'focusMode':
           if (compactRef.current) return false; // phones already hide their bars while reading
-          setFocusMode((f) => {
-            if (!f) toast(en.reader.focusHint);
-            return !f;
-          });
+          if (!focusModeRef.current) toast(en.reader.focusHint);
+          setFocusMode(!focusModeRef.current);
           return true;
       }
     };
@@ -315,6 +330,8 @@ export function ReaderView({
     return () => window.removeEventListener('keydown', onKey);
   }, [
     keymap,
+    getInset,
+    setFocusMode,
     ready,
     setSidebar,
     pdf,
@@ -352,9 +369,6 @@ export function ReaderView({
   useEffect(() => {
     compactRef.current = compact;
   }, [compact]);
-  useEffect(() => {
-    focusModeRef.current = focusMode;
-  }, [focusMode]);
 
   // page layout (FR-RDR-10): PDF.js's own scroll/spread modes; phones always read continuously
   useEffect(() => {
@@ -468,7 +482,7 @@ export function ReaderView({
         aria-label={en.reader.pageInput}
         inputMode="numeric"
         enterKeyHint="go"
-        className="min-h-9 w-12 rounded-md border border-line-strong bg-ui-bg text-center text-ui-fg"
+        className="min-h-9 w-12 rounded-md border border-line-strong bg-ui-bg text-center text-ui-fg pointer-coarse:min-h-11"
         value={draft ?? String(page)}
         onFocus={(e) => {
           setDraft(String(page));
