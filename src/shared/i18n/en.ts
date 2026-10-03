@@ -34,7 +34,8 @@ export const en = {
     add: 'Add PDF',
     dropHere: 'Tip: drop PDF files anywhere on this page to add them.',
     emptyTitle: 'Your library is empty',
-    emptyBody: 'Add a PDF to start reading. Highlights, notes and bookmarks attach to lines, and your place is saved as you read.',
+    emptyBody:
+      'Add a PDF to start reading. Highlights, notes and bookmarks attach to lines, and your place is saved as you read.',
     search: 'Search titles',
     sortBy: 'Sort',
     sorts: { opened: 'Last opened', title: 'Title', added: 'Recently added' },
@@ -55,7 +56,8 @@ export const en = {
       'not-pdf': (n: string) => `${q(n)} is not a PDF.`,
       corrupt: (n: string) => `${q(n)} could not be opened. It may be damaged or unsupported.`,
       'password-cancelled': (n: string) => `${q(n)} was not added: no password.`,
-      storage: (n: string) => `${q(n)} could not be saved on this device. Free up space or leave private browsing, then try again.`,
+      storage: (n: string) =>
+        `${q(n)} could not be saved on this device. Free up space or leave private browsing, then try again.`,
     },
   },
   password: {
@@ -87,7 +89,10 @@ export const en = {
     errors: {
       'not-found': { title: 'Document not found', body: 'This document is not in your library on this device.' },
       'no-file': { title: 'Not on this device yet', body: '' }, // the explanation comes from FileGate
-      locked: { title: 'This PDF is locked', body: 'It is password-protected. Enter the password to read it; the password is not stored.' },
+      locked: {
+        title: 'This PDF is locked',
+        body: 'It is password-protected. Enter the password to read it; the password is not stored.',
+      },
       corrupt: { title: 'This PDF cannot be opened', body: 'The file appears to be damaged or incomplete.' },
       unsupported: { title: 'This PDF is not supported', body: 'It uses features this app cannot display.' },
     },
@@ -101,9 +106,12 @@ export const en = {
         mismatch: 'The downloaded file did not match this book, so it was not kept. Try again, or attach the file.',
         error: 'The download failed. Try again, or attach the file.',
       },
-      localOnly: 'The PDF file is not stored on this device. Attach the same PDF to read it; your annotations are kept.',
-      deviceOnly: 'This book is kept on the device where it was added (it is too large for cloud storage). Attach the same PDF to read it here; your annotations are already here.',
-      notUploaded: 'This book has not reached your account from its other device yet. Open the app there, or attach the same PDF here.',
+      localOnly:
+        'The PDF file is not stored on this device. Attach the same PDF to read it; your annotations are kept.',
+      deviceOnly:
+        'This book is kept on the device where it was added (it is too large for cloud storage). Attach the same PDF to read it here; your annotations are already here.',
+      notUploaded:
+        'This book has not reached your account from its other device yet. Open the app there, or attach the same PDF here.',
       mismatch: 'That file is not the same PDF (its contents differ), so it was not attached. Choose the exact file.',
       download: 'Download',
       attach: 'Attach file',
@@ -257,8 +265,41 @@ export const en = {
     localOnly: 'Everything is stored on this device only.',
     storage: 'Storage',
     data: 'Your data',
+    reading: 'Reading',
+    noteMarker: 'Note marker',
+    gutter: { bubble: 'Speech bubble', dot: 'Dot' },
+    defaultZoom: 'Default zoom (this device)',
+    zoom: { 'page-width': 'Fit width', 'page-fit': 'Fit page', '1': '100%' },
+    palette: 'Highlight colours',
+    paletteHint: 'Each colour has a meaning. Keys 1–8 apply them in this order.',
+    colourOf: (label: string) => `Colour for ${label}`,
+    meaningOf: (n: number) => `Meaning of colour ${n}`,
+    removeColour: (label: string) => `Remove ${label}`,
+    colourRemoved: (label: string) => `Removed ${q(label)}. Its highlights show grey until you add a colour back.`,
+    addColour: 'Add a colour',
+    newColour: 'New meaning',
+    lowContrast: (themes: string) =>
+      `Text under this colour is hard to read in: ${themes}. Pick a lighter or softer colour.`,
+    shortcuts: 'Keyboard shortcuts',
+    shortcutsHint:
+      'Choose a key, then press the new key. Single letters and symbols only; shortcuts never fire while you type.',
+    pressKey: 'Press a key…',
+    remapLabel: (action: string, key: string) => `${action}: ${key}. Change`,
+    remapConflict: (action: string) => `That key is already used for “${action}”.`,
+    remapErrors: {
+      'modifier-only':
+        'Ctrl, Alt, Shift or Cmd alone cannot be a shortcut: browsers and keyboards report them unreliably.',
+      chord: 'Use a single key without Ctrl, Alt or Cmd: those combinations belong to the browser and system.',
+      reserved: 'That key is reserved (navigation, colours 1–8 or Esc). Choose a letter or symbol.',
+    },
+    resetShortcuts: 'Reset to defaults',
+    cacheBudget: 'Keep offline on this device',
+    cacheBooks: 'Books',
+    cacheSize: 'Up to',
+    cacheHint: 'Older downloaded books are removed first. Books stored only on this device are always kept.',
     exportAll: 'Export all annotations (JSON)',
-    exportAllHint: 'Every book’s highlights, notes, bookmarks and reading positions, plus your settings. PDF files are not included.',
+    exportAllHint:
+      'Every book’s highlights, notes, bookmarks and reading positions, plus your settings. PDF files are not included.',
     deviceStorage: (used: string, quota: string) => `This device: ${used} used of ${quota} available to the app`,
     cloudStorage: (used: string, total: string) => `Your account: ${used} of ${total} of PDF storage`,
     cachedFiles: (n: number, size: string) => `${n} ${n === 1 ? 'book' : 'books'} stored offline (${size})`,
@@ -277,9 +318,11 @@ export const en = {
     loading: 'Loading…',
     signOut: 'Sign out',
     signOutTitle: 'Sign out?',
-    signOutBody: 'Your data stays in your account. You can also remove it from this device, for example on a shared computer.',
+    signOutBody:
+      'Your data stays in your account. You can also remove it from this device, for example on a shared computer.',
     removeData: 'Remove data from this device',
-    unsyncedWarning: (n: number) => `${n} ${n === 1 ? 'change has' : 'changes have'} not reached your account yet and will be lost.`,
+    unsyncedWarning: (n: number) =>
+      `${n} ${n === 1 ? 'change has' : 'changes have'} not reached your account yet and will be lost.`,
     foreignTitle: 'This device has another account’s data',
     foreignBody: (email: string) =>
       `The library on this device belongs to a different account, so it will not be mixed with ${email}. Remove it from this device to continue, or sign out.`,

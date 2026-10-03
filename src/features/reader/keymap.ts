@@ -100,3 +100,61 @@ export function route(e: KeyLike & { shiftKey?: boolean }, keymap: readonly Bind
   if (!b || (primary && (b.action === 'undo' || b.action === 'redo') && isTypingTarget(e.target))) return null;
   return { action: b.action, key };
 }
+
+/** Single-key actions the user may remap (FR-KEY-04, FR-BKM-06); chords, arrows, digits and Esc stay fixed. */
+export const REMAPPABLE: readonly Action[] = [
+  'bookmark',
+  'highlight',
+  'note',
+  'prevBookmark',
+  'nextBookmark',
+  'goToPage',
+  'sidebar',
+  'themeMenu',
+];
+
+/** User remaps (`settings.keymap`, action -> key) applied over the defaults; unknown actions are ignored. */
+export function applyOverrides(
+  overrides: Readonly<Record<string, string>>,
+  base: readonly Binding[] = KEYMAP,
+): Binding[] {
+  return base.map((b) => {
+    const key = REMAPPABLE.includes(b.action) && !b.primary ? overrides[b.action] : undefined;
+    return key ? { ...b, keys: [key] } : b;
+  });
+}
+
+const MODIFIERS = new Set(['Control', 'Alt', 'AltGraph', 'Shift', 'Meta', 'OS', 'CapsLock', 'Fn']);
+const BLOCKED = new Set([
+  'Escape',
+  'Tab',
+  'Enter',
+  ' ',
+  'Backspace',
+  'Delete',
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+]);
+
+export type RemapError =
+  { kind: 'modifier-only' } | { kind: 'chord' } | { kind: 'reserved' } | { kind: 'conflict'; with: Action };
+
+/**
+ * Checks a captured key for `action` (FR-KEY-04): one plain printable key; modifier-only presses and Ctrl/Cmd/Alt
+ * chords are refused (H3: unreliable across layouts, AltGr = Ctrl+Alt), navigation keys stay reserved, and a key
+ * another action already uses is a conflict. Returns the normalised key or the reason.
+ */
+export function validateRemap(
+  e: { key: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean },
+  action: Action,
+  keymap: readonly Binding[],
+): { key: string } | { error: RemapError } {
+  if (MODIFIERS.has(e.key)) return { error: { kind: 'modifier-only' } };
+  if (e.ctrlKey || e.metaKey || e.altKey) return { error: { kind: 'chord' } };
+  if (BLOCKED.has(e.key) || e.key.length !== 1 || /[1-8]/.test(e.key)) return { error: { kind: 'reserved' } };
+  const key = e.key.toLowerCase();
+  const other = keymap.find((b) => !b.primary && b.action !== action && b.keys.includes(key));
+  return other ? { error: { kind: 'conflict', with: other.action } } : { key };
+}

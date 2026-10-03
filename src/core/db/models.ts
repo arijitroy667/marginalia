@@ -101,7 +101,8 @@ export const SettingsSchema = z.looseObject({
     .default(() => DEFAULT_PALETTE.map((e) => ({ ...e }))),
   gutterStyle: z.enum(['bubble', 'dot']).default('bubble'), // note indicator (FR-NOT-02)
   warmth: z.number().min(0).max(100).default(0), // FR-THM-03
-  invertImages: z.boolean().default(false), // Dark: invert images too (FR-THM-02); scanned pages always invert
+  invertImages: z.boolean().default(false),
+  keymap: z.record(z.string(), z.string().length(1)).default({}), // action -> key (FR-KEY-04); unknown actions ignored // Dark: invert images too (FR-THM-02); scanned pages always invert
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 export const DEFAULT_SETTINGS: Settings = SettingsSchema.parse({});

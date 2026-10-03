@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
+import { ZOOM_DEFAULTS } from '../../config';
 import type { Anchor } from '../../core/anchors/types';
 import type { DocumentRow, PositionRow } from '../../core/db/models';
 import { annotationsRepo } from '../../core/db/repos';
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery';
-import { usePref } from '../../shared/hooks/usePref';
+import { readPref, usePref } from '../../shared/hooks/usePref';
 import { en } from '../../shared/i18n/en';
 import { BookmarkIcon } from '../../shared/ui/icons';
 import { toast } from '../../shared/ui/toast';
@@ -17,7 +18,7 @@ import { useResolvedTheme } from '../theme/useTheme';
 import { clearHistory, redo, undo } from './commands';
 import { CheatSheet } from './CheatSheet';
 import { FindBar } from './FindBar';
-import { route, type Action } from './keymap';
+import { applyOverrides, route, type Action } from './keymap';
 import { SheetHandle } from './SheetHandle';
 import { applyColour, deleteOnSelection, LineActions, openNoteEditor, quickBookmark } from './LineActions';
 import { adjacentBookmark, jumpToAnchor, READING_INSET_PX, readingLine, scrollToPoint } from './navigation';
@@ -109,7 +110,8 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   const compactRef = useRef(compact);
   const lastPointer = useRef<PointerKind>('mouse');
   const selection = useReaderStore((s) => s.selection);
-  const { palette, warmth, invertImages } = useSettings();
+  const { palette, warmth, invertImages, keymap: overrides } = useSettings();
+  const keymap = useMemo(() => applyOverrides(overrides), [overrides]); // FR-KEY-04
   const theme = useResolvedTheme();
   const [colourPref, setColourPref] = usePref('reader.colour', COLOUR_SLOTS, '1');
   const active = palette.find((p) => String(p.id) === colourPref)?.id ?? palette[0]?.id ?? 1;
@@ -131,7 +133,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
       if (cancelled) return v.destroy();
       created = v;
       v.eventBus.on('pagesinit', () => {
-        v.viewer.currentScaleValue = 'page-width'; // default (FR-RDR-03); zoom is device-local, never synced
+        v.viewer.currentScaleValue = readPref('reader.zoom', ZOOM_DEFAULTS, 'page-width'); // FR-SET-02; device-local, never synced
         container.current?.focus({ preventScroll: true }); // arrows/space scroll right away
         setPagesReady(true);
       });
@@ -280,13 +282,14 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      const hit = route(e);
+      const hit = route(e, keymap);
       if (!hit || (help && hit.action !== 'help')) return; // the cheat sheet is modal
       if (run(hit.action, hit.key)) e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [
+    keymap,
     ready,
     setSidebar,
     pdf,
@@ -333,7 +336,16 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
   usePinch(ready, getViewer, container);
   usePageTheme(ready, getViewer, theme, invertImages);
   useAutoHideChrome(compact && ready, container, setChrome);
-  useResume({ pagesReady, getViewer, getInset, container, documentId: row.id, pdf, docHash: row.contentHash, onRemote: setRemote });
+  useResume({
+    pagesReady,
+    getViewer,
+    getInset,
+    container,
+    documentId: row.id,
+    pdf,
+    docHash: row.contentHash,
+    onRemote: setRemote,
+  });
 
   // PDFViewer does not watch its container: re-fit fit-width/fit-page when the viewer area resizes
   useEffect(() => {
@@ -566,7 +578,9 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
               role="status"
               className={`absolute left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border border-line bg-surface py-1 pl-3 pr-1 text-sm text-ui-fg shadow-lg ${compact ? 'top-16' : 'top-2'}`}
             >
-              <span className="whitespace-nowrap">{en.reader.continueFrom(remote.deviceLabel ?? en.reader.otherDevice, remote.page)}</span>
+              <span className="whitespace-nowrap">
+                {en.reader.continueFrom(remote.deviceLabel ?? en.reader.otherDevice, remote.page)}
+              </span>
               <button
                 className="min-h-9 rounded-full px-3 font-medium text-accent hover:bg-ui-bg"
                 onClick={() => {
@@ -660,7 +674,7 @@ export function ReaderView({ row, pdf }: { row: DocumentRow; pdf: PDFDocumentPro
           <ThemeMenu reader triggerRef={themeTrigger} />
         </div>
       )}
-      <CheatSheet open={help} onOpenChange={setHelp} />
+      <CheatSheet open={help} onOpenChange={setHelp} keymap={keymap} />
     </div>
   );
 }

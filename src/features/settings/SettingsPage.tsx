@@ -10,6 +10,7 @@ import { signOut, unsyncedChanges } from '../../core/auth';
 import { en } from '../../shared/i18n/en';
 import { useAuth } from '../auth/useAuth';
 import { exportJson } from '../export/exportJson';
+import { CacheBudget, PaletteSection, ReadingSection, ShortcutsSection } from './sections';
 
 const size = (n: number) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : `${Math.round(n / 1024 ** 2)} MB`);
 
@@ -23,8 +24,10 @@ function StorageSection({ cloud }: { cloud: boolean }) {
     <progress className="h-2 w-full accent-[var(--accent)]" aria-label={label} max={max} value={Math.min(value, max)} />
   );
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4">
-      <h2 className="font-medium">{en.settings.storage}</h2>
+    <section aria-labelledby="set-storage" className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4">
+      <h2 id="set-storage" className="font-medium">
+        {en.settings.storage}
+      </h2>
       {cached && <p className="text-sm text-muted">{en.settings.cachedFiles(cached.count, size(cached.bytes))}</p>}
       {estimate && estimate.quota > 0 && (
         <>
@@ -32,13 +35,14 @@ function StorageSection({ cloud }: { cloud: boolean }) {
           {bar(estimate.usage, estimate.quota, en.settings.storage)}
         </>
       )}
+      <CacheBudget />
       {cloud && cloudBytes !== undefined && (
         <>
           <p className="text-sm text-muted">{en.settings.cloudStorage(size(cloudBytes), size(CLOUD_STORAGE_BYTES))}</p>
           {bar(cloudBytes, CLOUD_STORAGE_BYTES, en.settings.account)}
         </>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -70,6 +74,9 @@ export function SettingsPage() {
           <p className="text-sm text-muted">{en.settings.localOnly}</p>
         )}
       </div>
+      <ReadingSection />
+      <PaletteSection />
+      <ShortcutsSection />
       <StorageSection cloud={auth.status === 'signed-in'} />
       <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4">
         <h2 className="font-medium">{en.settings.data}</h2>

@@ -164,14 +164,31 @@ export const settingsRepo = {
     return parsed.success ? parsed.data : DEFAULT_SETTINGS; // a bad stored value must never break the app
   },
 
-  async update(patch: Partial<Settings>): Promise<Settings> {
+  /**
+   * `patch` may be a function of the current stored settings: quick successive edits of one array (palette,
+   * keymap) then build on each other instead of on a stale copy.
+   */
+  async update(patch: Partial<Settings> | ((current: Settings) => Partial<Settings>)): Promise<Settings> {
     return db.transaction('rw', db.meta, db.outbox, async () => {
-      const settings = SettingsSchema.parse({ ...(await settingsRepo.get()), ...patch });
+      const current = await settingsRepo.get();
+      const settings = SettingsSchema.parse({ ...current, ...(typeof patch === 'function' ? patch(current) : patch) });
       const value: StoredSettings = { settings, updatedAt: now(), localUpdatedAt: Date.now() };
       await db.meta.put({ key: SETTINGS_KEY, value });
       await enqueue('settings', 'profile', 'upsert', value);
       return settings;
     });
+  },
+};
+
+/** Offline cache budget for this device (FR-SET-02): how many books / MB stay downloaded. */
+export const cacheBudget = {
+  async get(): Promise<{ docs: number; mb: number }> {
+    const v = (await db.meta.get('cacheBudget'))?.value as { docs?: unknown; mb?: unknown } | undefined;
+    const ok = (n: unknown, min: number) => (typeof n === 'number' && Number.isInteger(n) && n >= min ? n : undefined);
+    return { docs: ok(v?.docs, 1) ?? OFFLINE_CACHE_DOCS, mb: ok(v?.mb, 50) ?? OFFLINE_CACHE_BYTES / 1024 / 1024 };
+  },
+  async set(budget: { docs: number; mb: number }): Promise<void> {
+    await db.meta.put({ key: 'cacheBudget', value: budget });
   },
 };
 
@@ -209,6 +226,7 @@ export const filesRepo = {
     const docs = new Map(
       (await db.documents.bulkGet(files.map((f) => f.documentId))).filter((d) => !!d).map((d) => [d.id, d]),
     );
+    const budget = await cacheBudget.get();
     const ids = evictable(
       files.map((f) => ({
         id: f.documentId,
@@ -217,6 +235,8 @@ export const filesRepo = {
         pinned: f.pinned || f.documentId === keep,
         inCloud: !!docs.get(f.documentId)?.storagePath,
       })),
+      budget.docs,
+      budget.mb * 1024 * 1024,
     );
     await db.files.bulkDelete(ids);
     return ids;

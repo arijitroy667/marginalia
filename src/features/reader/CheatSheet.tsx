@@ -21,7 +21,15 @@ function combos(b: Binding): string[] {
 }
 
 /** `?` cheat sheet (FR-KEY-03), generated from the keymap, plus the touch gestures (FR-KEY-05). */
-export function CheatSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function CheatSheet({
+  open,
+  onOpenChange,
+  keymap = KEYMAP,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  keymap?: readonly Binding[];
+}) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -37,7 +45,7 @@ export function CheatSheet({ open, onOpenChange }: { open: boolean; onOpenChange
           <div className="grid gap-4 sm:grid-cols-2">
             {GROUPS.map((g) => {
               const actions = new Map<Action, string[]>();
-              for (const b of KEYMAP.filter((b) => b.group === g))
+              for (const b of keymap.filter((b) => b.group === g))
                 actions.set(b.action, [...(actions.get(b.action) ?? []), ...combos(b)]);
               return (
                 <section key={g} aria-label={en.keys.groups[g]}>

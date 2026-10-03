@@ -6,14 +6,7 @@ export function usePref<T extends string>(
   allowed: readonly T[],
   fallback: T,
 ): [T, (v: T | ((prev: T) => T)) => void] {
-  const [value, setValue] = useState<T>(() => {
-    try {
-      const v = localStorage.getItem(`mg.${key}`);
-      return allowed.find((a) => a === v) ?? fallback;
-    } catch {
-      return fallback;
-    }
-  });
+  const [value, setValue] = useState<T>(() => readPref(key, allowed, fallback));
   const set = useCallback(
     (v: T | ((prev: T) => T)) =>
       setValue((prev) => {
@@ -28,4 +21,14 @@ export function usePref<T extends string>(
     [key],
   );
   return [value, set];
+}
+
+/** The stored preference, or `fallback` (also when storage is unavailable). */
+export function readPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const v = localStorage.getItem(`mg.${key}`);
+    return allowed.find((a) => a === v) ?? fallback;
+  } catch {
+    return fallback;
+  }
 }

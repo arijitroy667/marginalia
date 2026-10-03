@@ -28,6 +28,8 @@ export function useSettings(): Settings {
   return useLiveQuery(() => settingsRepo.get(), []) ?? { ...DEFAULT_SETTINGS, theme: cachedTheme() };
 }
 
-export function updateSettings(patch: Partial<Settings>): Promise<Settings> {
+export function updateSettings(
+  patch: Partial<Settings> | ((current: Settings) => Partial<Settings>),
+): Promise<Settings> {
   return settingsRepo.update(patch);
 }

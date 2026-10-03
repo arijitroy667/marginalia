@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { KEYMAP, route } from './keymap';
+import { applyOverrides, KEYMAP, route, validateRemap } from './keymap';
 
 const body = { tagName: 'DIV' };
 const press = (key: string, over: object = {}) => route({ key, target: body, ...over });
@@ -66,5 +66,25 @@ describe('keymap router (FR-KEY-01/02)', () => {
           seen.add(id);
         }
       }
+  });
+});
+
+describe('remapping (FR-KEY-04, FR-BKM-06)', () => {
+  it('applies user keys to remappable single-key actions only', () => {
+    const km = applyOverrides({ bookmark: 'm', undo: 'u', nonsense: 'x' });
+    expect(route({ key: 'm', target: { tagName: 'DIV' } }, km)?.action).toBe('bookmark');
+    expect(route({ key: 'b', target: { tagName: 'DIV' } }, km)).toBeNull();
+    expect(route({ key: 'z', ctrlKey: true, target: { tagName: 'DIV' } }, km)?.action).toBe('undo'); // chords stay
+  });
+
+  it('refuses modifier-only presses, chords, reserved keys and conflicts, naming the clash', () => {
+    expect(validateRemap({ key: 'Control' }, 'bookmark', KEYMAP)).toEqual({ error: { kind: 'modifier-only' } });
+    expect(validateRemap({ key: 'm', ctrlKey: true }, 'bookmark', KEYMAP)).toEqual({ error: { kind: 'chord' } });
+    expect(validateRemap({ key: 'Escape' }, 'bookmark', KEYMAP)).toEqual({ error: { kind: 'reserved' } });
+    expect(validateRemap({ key: '3' }, 'bookmark', KEYMAP)).toEqual({ error: { kind: 'reserved' } });
+    expect(validateRemap({ key: 'h' }, 'bookmark', KEYMAP)).toEqual({ error: { kind: 'conflict', with: 'highlight' } });
+    expect(validateRemap({ key: 'J' }, 'bookmark', KEYMAP)).toEqual({ error: { kind: 'conflict', with: 'lineDown' } });
+    expect(validateRemap({ key: 'M' }, 'bookmark', KEYMAP)).toEqual({ key: 'm' });
+    expect(validateRemap({ key: 'b' }, 'bookmark', KEYMAP)).toEqual({ key: 'b' }); // its own key again is fine
   });
 });
