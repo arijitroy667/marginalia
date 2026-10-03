@@ -29,6 +29,12 @@ OS/browser version and result next to each item.
 - [ ] Resume returns to the same line (triangle marker for 2 s) after closing and reopening the installed app.
 - [ ] Toasts never cover the bottom bar.
 
+## M3 exit — sync (signed in on both)
+
+- [ ] Highlight on the Android phone; it appears on desktop Chrome with the book open within ~5 s (and back).
+- [ ] Airplane mode on the phone: add notes, reconnect, they reach the desktop; the pill shows "Offline · n pending".
+- [ ] Open a book added on the other device: it downloads with progress and opens.
+
 ## M4 — release
 
 - [ ] Install to Home Screen (Android prompt; iOS Share → Add to Home Screen helper).

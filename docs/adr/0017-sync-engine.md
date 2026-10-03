@@ -86,3 +86,16 @@ has an `active` flag that `stopSync` clears; every engine write — apply, ackno
 inside its Dexie transaction, and transactions on the same tables are serialised, so nothing lands after the
 wipe (`engine.test.ts`: "a pull still running when sync stops applies nothing more").
 
+## M3 exit (2026-10-03)
+
+| Gate | Result |
+|---|---|
+| Desktop Chrome and a phone converge within 5 s online | **2.9 s** desktop ↔ desktop (`cloud.spec.ts`); a real Android phone is on the QA checklist |
+| 100 offline edits on each side merge after reconnect | ✅ 200 notes on the server and on both devices (`cloud-chaos.spec.ts`) |
+| Kill-tab test loses nothing | ✅ |
+| Duplicate-add test | ✅ the same PDF added on two offline devices becomes one document with one id everywhere |
+
+Found on the way: on a first visit the service worker cached the app but did not control the open page, so a
+user going offline in their first session could not add or open PDFs. `clientsClaim: true` fixes it (updates still
+wait for the user's prompt, §8.9).
+

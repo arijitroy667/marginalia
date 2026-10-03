@@ -49,6 +49,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,webmanifest}', 'pdfjs/**/*'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // pdf.worker is ~1.3 MB
         navigateFallback: 'index.html',
+        // first install: control the open page at once, so a first session can go offline (updates still wait for the prompt)
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/pdfjs/'),
