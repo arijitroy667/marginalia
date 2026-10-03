@@ -67,3 +67,22 @@ Measured against the hosted project (`e2e/cloud.spec.ts`): a highlight made on d
 the book open and no reload, **~2.9 s** after the key press (1 s debounce, push, then ~1.5 s Realtime delivery) —
 within FR-SYN-06's 5 s. The post-write delay was 5 s at first (6.5–7 s end to end); the owner chose 1 s on
 2026-10-03 and FR-SYN-03 was updated.
+
+## Chaos tests and the sign-out race (T-305)
+
+`e2e/cloud-chaos.spec.ts` against the hosted project, 3 × green in a row:
+- **offline**: edits made offline stay in the outbox, the pill shows "Offline · n pending", and they reach the
+  server when the network returns;
+- **flaky**: the first two annotation writes get HTTP 503; the scheduler backs off and retries, and the server
+  ends with exactly the expected rows (nothing lost, nothing duplicated);
+- **killed tab**: a tab closed right after a highlight became visible (saved locally, not yet pushed) loses
+  nothing — the outbox goes up when the app next starts;
+- **clock skew**: a device whose clock runs a day ahead recolours a line; another device recolours it later; the
+  later write wins everywhere, because LWW uses the server's `updated_at`.
+
+The repeated runs exposed a real race: "Sign out → Remove data from this device" could be followed by rows from a
+pull (or a Realtime event) that was already in flight, so removed annotations reappeared. Fix: each sync session
+has an `active` flag that `stopSync` clears; every engine write — apply, acknowledge, the pull cursor — checks it
+inside its Dexie transaction, and transactions on the same tables are serialised, so nothing lands after the
+wipe (`engine.test.ts`: "a pull still running when sync stops applies nothing more").
+

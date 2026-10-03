@@ -11,6 +11,7 @@ import { createScheduler, type Scheduler, type SyncStatus } from './scheduler';
 import { supabaseTransport } from './supabaseTransport';
 
 let current: Scheduler | null = null;
+let active = { on: false }; // per sync session: stopSync turns it off before the old session can write again
 const listeners = new Set<() => void>();
 let unsubscribe: (() => void) | undefined;
 let unsubscribeRealtime: (() => void) | undefined;
@@ -18,7 +19,8 @@ const emit = () => listeners.forEach((l) => l());
 
 export function startSync(sb: SupabaseClient, userId: string, onAuthError?: () => void): void {
   stopSync();
-  const engine = createSyncEngine(supabaseTransport(sb), userId);
+  const session = (active = { on: true });
+  const engine = createSyncEngine(supabaseTransport(sb), userId, undefined, () => session.on);
   const cfg = supabaseConfig();
   const blobs = cfg && createBlobSync(sb, userId, cfg.url, cfg.anonKey);
   // files first: an upload records storagePath, which then goes out in the same push (FR-SYN-07)
@@ -32,6 +34,7 @@ export function startSync(sb: SupabaseClient, userId: string, onAuthError?: () =
 }
 
 export function stopSync(): void {
+  active.on = false;
   unsubscribeRealtime?.();
   unsubscribeRealtime = undefined;
   unsubscribe?.();

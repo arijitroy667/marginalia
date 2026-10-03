@@ -353,6 +353,25 @@ describe('duplicate-document merge (FR-SYN-09)', () => {
   });
 });
 
+describe('stopped sync writes nothing (sign-out with data removal)', () => {
+  it('a pull still running when sync stops applies nothing more, not even its cursor', async () => {
+    server.tables.documents.set(uuid(1), serverDoc(1));
+    let on = true;
+    const engine = createSyncEngine(server, USER, B, () => on);
+    const pull = server.pull.bind(server);
+    server.pull = async (...args) => {
+      const rows = await pull(...args);
+      on = false; // sign-out lands while the rows are in flight
+      await B.transaction('rw', B.tables, async () => {
+        for (const t of B.tables) await t.clear();
+      });
+      return rows;
+    };
+    await engine.pull();
+    for (const t of B.tables) expect(await t.count(), t.name).toBe(0);
+  });
+});
+
 function serverDoc(n: number, over: Record<string, unknown> = {}): ServerRow {
   return {
     id: uuid(n),

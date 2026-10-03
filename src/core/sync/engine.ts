@@ -44,7 +44,17 @@ const cursorKey = (t: SyncTable) => `sync.cursor.${t}`;
 const time = (iso: string) => Date.parse(iso);
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
-export function createSyncEngine(transport: SyncTransport, userId: string, db: AppDB = appDb) {
+/**
+ * `active`: false once sync is stopped (sign-out). Every write checks it inside its transaction, and Dexie runs
+ * transactions on the same tables one at a time, so nothing a still-running pull fetched can land after a
+ * "remove data from this device" wipe.
+ */
+export function createSyncEngine(
+  transport: SyncTransport,
+  userId: string,
+  db: AppDB = appDb,
+  active: () => boolean = () => true,
+) {
   async function pending(entity: OutboxEntity): Promise<OutboxItem[]> {
     const items = await db.outbox.where('[entity+entityId]').between([entity, ''], [entity, '￿']).toArray();
     return items.filter((i) => i.status === 'pending').sort((a, b) => a.seq! - b.seq!);
@@ -54,6 +64,7 @@ export function createSyncEngine(transport: SyncTransport, userId: string, db: A
   async function acknowledge(entity: OutboxEntity, sent: OutboxItem[], rows: ServerRow[]): Promise<void> {
     const key = KEY_OF[TABLE_OF[entity]];
     await db.transaction('rw', [db.outbox, db.documents, db.annotations, db.positions, db.meta], async () => {
+      if (!active()) return;
       await db.outbox.bulkDelete(sent.map((i) => i.seq!));
       for (const r of rows) {
         const id = str(r[key]);
@@ -187,6 +198,7 @@ export function createSyncEngine(transport: SyncTransport, userId: string, db: A
     const p = fromServer(table, row);
     if (!p) return; // invalid for this client version: ignored, never written
     await db.transaction('rw', [db.outbox, db.documents, db.annotations, db.positions, db.meta], async () => {
+      if (!active()) return;
       switch (p.table) {
         case 'documents': {
           if (await hasPending('document', p.row.id)) return;
@@ -231,7 +243,10 @@ export function createSyncEngine(transport: SyncTransport, userId: string, db: A
         const last = rows.at(-1);
         if (last) {
           after = { ts: str(last.updated_at), key: str(last[KEY_OF[table]]) };
-          if (!saved || time(after.ts) >= time(saved.ts)) await db.meta.put({ key: cursorKey(table), value: after });
+          if (!saved || time(after.ts) >= time(saved.ts))
+            await db.transaction('rw', db.meta, async () => {
+              if (active()) await db.meta.put({ key: cursorKey(table), value: after });
+            });
         }
         if (rows.length < PULL_PAGE) break;
       }
