@@ -102,7 +102,9 @@ export function createScheduler(
       document.addEventListener('visibilitychange', onVisible);
       interval = setInterval(() => void run(), SYNC_INTERVAL_MS);
       let first = true;
-      const sub = liveQuery(() => db.outbox.count()).subscribe(() => {
+      const sub = liveQuery(() => db.outbox.where('status').equals('pending').count()).subscribe((pending) => {
+        // a new local change means "not synced yet", even before the delayed push runs (FR-SYN-05)
+        if (pending > 0 && status.state === 'synced') emit({ ...status, state: 'syncing', pending });
         if (first) return void (first = false);
         clearTimeout(afterWrite);
         afterWrite = setTimeout(() => void run(), AFTER_WRITE_MS);

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Anchor } from '../anchors/types';
-import { annotationsRepo, documentsRepo, outboxRepo, positionsRepo, settingsRepo } from './repos';
+import { annotationsRepo, documentsRepo, localData, metaRepo, outboxRepo, positionsRepo, settingsRepo } from './repos';
 import { db } from './schema';
 
 const hash = (c: string) => c.repeat(64);
@@ -207,5 +207,25 @@ describe('outboxRepo (FR-SYN-10)', () => {
     await add('failed');
     await outboxRepo.retryAll();
     expect(await outboxRepo.failed()).toEqual([]);
+  });
+});
+
+describe('localData (FR-SYN-01)', () => {
+  it('wipe removes every table, including the owner and the outbox', async () => {
+    const doc = await documentsRepo.create(newDoc());
+    await annotationsRepo.create({
+      id: crypto.randomUUID(),
+      documentId: doc.id,
+      kind: 'note',
+      page: 1,
+      anchor: anchor(1),
+      colorId: null,
+      body: 'n',
+      label: null,
+    });
+    await metaRepo.set('ownerUserId', 'u1');
+    expect(await localData.outboxCount()).toBe(2);
+    await localData.wipe();
+    for (const t of db.tables) expect(await t.count(), t.name).toBe(0);
   });
 });

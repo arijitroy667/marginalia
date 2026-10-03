@@ -1,7 +1,6 @@
 # ADR 0017 — Sync engine (T-300)
 
-- Status: accepted for the engine core (2026-10-03); **live wiring waits for T-102/T-103** (Supabase project and
-  sign-in: `.env.local` not provided yet)
+- Status: accepted (2026-10-03); running against the hosted project since T-103 (ADR 0018)
 - Requirements: FR-SYN-02..05, FR-SYN-08, PRD §8.8, ADR 0005/0007
 
 ## Decision

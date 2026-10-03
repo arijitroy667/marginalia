@@ -102,4 +102,17 @@ describe('scheduler status (FR-SYN-05)', () => {
     await vi.runOnlyPendingTimersAsync();
     expect(e.push).toHaveBeenCalledTimes(2);
   });
+
+  it('a new local change turns Synced into Syncing before the delayed push runs', async () => {
+    vi.stubGlobal('window', new EventTarget()); // start() listens for online/offline and visibility
+    vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible' }));
+    const e = engine(['done', 'done']);
+    const s = createScheduler(e, { db: d, online: () => true });
+    s.start();
+    await vi.waitFor(() => expect(s.getStatus().state).toBe('synced'));
+    await add('pending');
+    await vi.waitFor(() => expect(s.getStatus()).toMatchObject({ state: 'syncing', pending: 1 }));
+    s.stop();
+    vi.unstubAllGlobals();
+  });
 });

@@ -248,3 +248,14 @@ export const lineCacheRepo = {
     await db.lineCache.put({ docHash, page, engine, data });
   },
 };
+
+/** The whole local database (sign-out "Remove data from this device", foreign account data; FR-SYN-01, ADR 0007). */
+export const localData = {
+  outboxCount: () => db.outbox.count(),
+  /** Deletes every row of every table (documents, files, annotations, positions, outbox, settings, caches). */
+  async wipe(): Promise<void> {
+    await db.transaction('rw', db.tables, async () => {
+      for (const t of db.tables) await t.clear();
+    });
+  },
+};

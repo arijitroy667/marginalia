@@ -16,7 +16,10 @@ export function UpdatePrompt() {
       className="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ui-fg shadow-lg"
     >
       {en.pwa.updateAvailable}
-      <button className="min-h-11 rounded-md bg-accent px-3 font-medium text-accent-fg" onClick={() => void updateServiceWorker(true)}>
+      <button
+        className="min-h-11 rounded-md bg-accent px-3 font-medium text-accent-fg"
+        onClick={() => void updateServiceWorker(true)}
+      >
         {en.pwa.reload}
       </button>
       <button className="min-h-11 rounded-md px-3 text-ui-fg" onClick={() => setNeedRefresh(false)}>

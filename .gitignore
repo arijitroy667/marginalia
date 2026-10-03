@@ -19,3 +19,4 @@ spikes/**/out/
 supabase/.temp/
 supabase/.branches/
 public/pdfjs/
+dist-cloud
