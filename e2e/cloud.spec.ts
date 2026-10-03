@@ -104,6 +104,17 @@ test.describe('cloud: auth + sync (T-103, T-300, FR-SYN-01..05)', () => {
     console.log(`realtime: highlight visible on B ${Date.now() - t0} ms after A's key press (push waits 1 s)`);
     await b.getByRole('link', { name: 'Library' }).click();
 
+    // settings sync (T-306, FR-THM-06): A picks Warm and a new palette label; B gets both on its next sync
+    await a.getByRole('link', { name: 'Library' }).click();
+    await a.getByRole('button', { name: 'Theme' }).first().click();
+    await a.getByRole('radio', { name: 'Warm' }).check();
+    await a.keyboard.press('Escape');
+    await expect.poll(async () => (await idb(a, 'outbox')).length, { timeout: 30_000 }).toBe(0);
+    const profile = await admin.from('profiles').select('settings').eq('id', userId).single<{ settings: unknown }>();
+    expect(profile.data?.settings).toMatchObject({ theme: 'warm' });
+    await b.reload(); // a sync run starts with the app
+    await expect(b.locator('html')).toHaveAttribute('data-theme', 'warm', { timeout: 30_000 });
+
     await b.getByRole('link', { name: 'Settings' }).click();
     await expect(b.getByText(`Signed in as ${email}`, { exact: false })).toBeVisible();
     await b.getByRole('button', { name: 'Sign out' }).click();
