@@ -1,0 +1,131 @@
+/* Landing page (/login): frosted-glass panels over soft light in the highlight colours (--hl-*, applyPalette). */
+html:has(.mg-landing) {
+  scroll-behavior: smooth; /* section links; off under prefers-reduced-motion (index.css) */
+}
+.mg-landing {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  overflow-x: clip; /* the blobs bleed past the edges; clip, not hidden, keeps the header sticky */
+}
+.mg-landing-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--ui-bg);
+}
+/* faint ruled lines: the page as lines */
+.mg-landing-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 35px,
+    color-mix(in srgb, var(--ui-fg) 6%, transparent) 35px 36px
+  );
+  mask-image: radial-gradient(ellipse at 50% 25%, black, transparent 70%);
+}
+/* static on purpose: animating under backdrop-filter re-blurs every panel on every frame */
+.mg-blob {
+  position: absolute;
+  width: 44vmax;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.42;
+}
+:root[data-theme='dark'] .mg-blob {
+  opacity: 0.2;
+}
+.mg-blob:nth-child(1) {
+  top: -14vmax;
+  left: -10vmax;
+  background: var(--hl-1, #ffe066);
+}
+.mg-blob:nth-child(2) {
+  top: 8vh;
+  right: -16vmax;
+  background: var(--hl-3, #7cc4f4);
+}
+.mg-blob:nth-child(3) {
+  bottom: -18vmax;
+  left: 22vw;
+  background: var(--hl-5, #c3a6f2);
+}
+.mg-blob:nth-child(4) {
+  top: 48vh;
+  left: -16vmax;
+  width: 30vmax;
+  background: var(--hl-4, #f59bb4);
+}
+
+.mg-glass {
+  background: color-mix(in srgb, var(--surface) 68%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-fg) 11%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 40%, transparent),
+    0 24px 60px -30px rgb(0 0 0 / 0.35);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .mg-glass {
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+  }
+}
+
+/* a highlighter stroke under the words */
+.mg-marker {
+  padding: 0 0.08em;
+  background: linear-gradient(
+    transparent 60%,
+    color-mix(in srgb, var(--hl-1, #ffe066) 85%, transparent) 60% 94%,
+    transparent 94%
+  );
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+:root[data-theme='dark'] .mg-marker {
+  background: linear-gradient(
+    transparent 60%,
+    color-mix(in srgb, var(--hl-1, #ffe066) 36%, transparent) 60% 94%,
+    transparent 94%
+  );
+}
+
+.mg-serif {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+}
+
+/* the preview page: text as bars, washes in the palette colours */
+.mg-line {
+  display: block;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--page-fg) 22%, transparent);
+}
+.mg-wash {
+  position: relative;
+  margin: -0.3rem -0.35rem; /* the wash grows around the line without moving its neighbours */
+  padding: 0.3rem 0.35rem;
+  border-radius: 0.3rem;
+}
+/* painted like the reader's highlights: the theme's blend and alpha (FR-THM-05) */
+.mg-wash::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--wash);
+  opacity: var(--hl-alpha, 1);
+  mix-blend-mode: var(--hl-blend, multiply);
+}
+.mg-wash-1 {
+  --wash: var(--hl-1, #ffe066);
+}
+.mg-wash-2 {
+  --wash: var(--hl-2, #8fd694);
+}

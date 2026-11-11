@@ -70,9 +70,35 @@ test.describe('theme engine (T-209, FR-THM-02..05, ADR 0002)', () => {
     await expect.poll(async () => near(await paper(), [0x12, 0x12, 0x12])).toBe(true);
 
     await openDoc(page, '08-scanned-no-text.pdf');
+    await setTheme(page, 'Dark'); // themes are per book (FR-THM-06)
     await expect(pageEl(page, 1)).not.toHaveAttribute('data-mg-dark', '');
     expect(await filterOf(page, 1)).toContain('url(');
     await expect(pageEl(page, 1).locator('.mg-img-restore')).toHaveCount(0); // > 80 % image: inverted like text
+  });
+
+  test('each book keeps its own theme and warmth; the library keeps the default (FR-THM-06)', async ({ page }) => {
+    const html = page.locator('html');
+    await page.emulateMedia({ colorScheme: 'light' });
+    await openDoc(page, '01-single-column-prose.pdf');
+    await expect(html).toHaveAttribute('data-theme', 'light');
+    await page.getByRole('button', { name: 'Theme' }).first().click();
+    await expect(page.getByRole('group', { name: 'Theme for this book' })).toBeVisible();
+    await page.getByRole('radio', { name: 'Dark' }).check();
+    await page.getByRole('slider', { name: /Warmth/ }).fill('40');
+    await page.keyboard.press('Escape');
+    await expect(html).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('.mg-warmth')).toHaveCount(1);
+
+    await page.getByRole('link', { name: 'Library' }).click();
+    await expect(html).toHaveAttribute('data-theme', 'light'); // the library: still the default
+    await openDoc(page, '05-tables.pdf');
+    await expect(html).toHaveAttribute('data-theme', 'light'); // another book: untouched
+    await expect(page.locator('.mg-warmth')).toHaveCount(0);
+
+    await page.getByRole('link', { name: 'Library' }).click();
+    await page.getByRole('link', { name: /01-single-column-prose/ }).click();
+    await expect(html).toHaveAttribute('data-theme', 'dark'); // and the first book kept its own
+    await expect(page.locator('.mg-warmth')).toHaveCount(1);
   });
 
   test('warmth overlay tints the reader without blocking input; switching theme stays under 300 ms', async ({

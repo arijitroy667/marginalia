@@ -172,6 +172,17 @@ describe('positionsRepo / settingsRepo', () => {
     expect(await db.outbox.where('entity').equals('settings').count()).toBe(1);
   });
 
+  it('book themes: none by default, kept per document, validated (FR-THM-06)', async () => {
+    expect((await settingsRepo.get()).bookThemes).toEqual({});
+    await settingsRepo.update((s) => ({ bookThemes: { ...s.bookThemes, a: { theme: 'dark', warmth: 40 } } }));
+    await settingsRepo.update((s) => ({ bookThemes: { ...s.bookThemes, b: { theme: 'warm' } } }));
+    const s = await settingsRepo.get();
+    expect(s.bookThemes).toEqual({ a: { theme: 'dark', warmth: 40 }, b: { theme: 'warm' } });
+    expect(s.theme).toBe('system'); // the default is untouched
+    await expect(settingsRepo.update({ bookThemes: { a: { warmth: 140 } } })).rejects.toThrow();
+    await expect(settingsRepo.update({ bookThemes: { a: { theme: 'sepia' as never } } })).rejects.toThrow();
+  });
+
   it('palette defaults to the five meanings and rejects bad entries (FR-HLT-02)', async () => {
     expect((await settingsRepo.get()).palette.map((p) => p.label)).toEqual([
       'Key idea',

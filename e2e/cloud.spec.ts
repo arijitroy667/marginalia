@@ -3,6 +3,7 @@
  * Two browser contexts = two devices of one throwaway user, signed in through the token-hash link route.
  * The service-role key stays in this Node process (user setup/teardown); the browser only gets the anon key.
  */
+import AxeBuilder from '@axe-core/playwright';
 import { createClient } from '@supabase/supabase-js';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
@@ -50,12 +51,23 @@ test.describe('cloud: auth + sync (T-103, T-300, FR-SYN-01..05)', () => {
   const synced = (page: Page) =>
     expect(page.getByRole('status').filter({ hasText: /^Synced$/ })).toBeVisible({ timeout: 30_000 });
 
-  test('signed out, the app sends you to sign in', async ({ browser }) => {
+  test('signed out, the app sends you to the landing page with sign-in up front', async ({ browser }) => {
     const page = await device(browser);
     await page.goto('/');
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Read PDFs line by line.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeInViewport();
     await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
+    for (const id of ['problem', 'features', 'how', 'privacy']) await expect(page.locator(`#${id} h2`)).toHaveCount(1);
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      const { violations } = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+        .analyze();
+      expect(violations.map((v) => `${scheme} ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual(
+        [],
+      );
+    }
   });
 
   test('a highlight made on one device reaches the other; sign-out can remove local data', async ({ browser }) => {

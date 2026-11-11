@@ -3,19 +3,19 @@ import { Link } from 'react-router';
 import { ZOOM_DEFAULTS } from '../../config';
 import type { Anchor } from '../../core/anchors/types';
 import type { DocumentRow, PositionRow } from '../../core/db/models';
-import { annotationsRepo } from '../../core/db/repos';
+import { annotationsRepo, metaRepo } from '../../core/db/repos';
 import { db } from '../../core/db/schema';
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery';
 import { readPref, usePref } from '../../shared/hooks/usePref';
 import { en } from '../../shared/i18n/en';
 import { BookmarkIcon } from '../../shared/ui/icons';
 import { toast } from '../../shared/ui/toast';
-import { updateSettings, useSettings } from '../settings/useSettings';
+import { useSettings } from '../settings/useSettings';
 import { PageFilters } from '../theme/PageFilters';
 import { SyncPill } from '../sync/SyncPill';
 import { ThemeMenu } from '../theme/ThemeMenu';
 import { warmthColor } from '../theme/tokens';
-import { useResolvedTheme } from '../theme/useTheme';
+import { updateBookTheme, useBookTheme } from '../theme/useTheme';
 import { clearHistory, redo, undo } from './commands';
 import { CheatSheet } from './CheatSheet';
 import { CoachMark } from './CoachMark';
@@ -98,6 +98,25 @@ const refit = (v: PdfViewer) => {
   const scale = fitScale(v, preset);
   if (scale === null ? fits.has(v) : Math.abs(scale - v.currentScale) > 1e-3) setZoom(v, preset);
 };
+/**
+ * Runs a zoom change keeping the page being read on screen (FR-RDR-03). PDF.js pins the viewport's top-left point,
+ * which can hand the screen to a neighbour: zoom with the previous page's foot at the top and the page number went
+ * back one. After the change the page scrolls the least it must to fill the view, or to show whole if it fits.
+ */
+function zoomInPlace(v: PdfViewer, change: () => void) {
+  const div = pageViewAt(v, v.currentPageNumber - 1)?.div;
+  change();
+  if (!div?.isConnected) return;
+  const top = div.getBoundingClientRect().top - v.container.getBoundingClientRect().top;
+  const slack = v.container.clientHeight - div.offsetHeight; // >= 0: the page fits
+  v.container.scrollTop += top - Math.min(Math.max(top, Math.min(0, slack)), Math.max(0, slack));
+}
+
+/** Each book reopens at its own last zoom; device-local like all zoom state (FR-RDR-03). */
+const zoomKey = (documentId: string) => `zoom:${documentId}`;
+const validZoom = (z: unknown): z is string =>
+  typeof z === 'string' && (PRESET_VALUES.has(z) || clamp(Number(z)) === Number(z));
+
 const rotate = (v: PdfViewer) => void (v.pagesRotation = (v.pagesRotation + 90) % 360); // view only (FR-RDR-09)
 
 const SIDEBAR = ['open', 'closed'] as const;
@@ -108,7 +127,7 @@ const COLOUR_SLOTS = ['1', '2', '3', '4', '5', '6', '7', '8'] as const; // activ
 function zoomStep(v: PdfViewer, dir: 1 | -1) {
   const cur = v.currentScale;
   const next = dir > 0 ? PRESETS.find((p) => p > cur + 0.01) : PRESETS.findLast((p) => p < cur - 0.01);
-  if (next) v.currentScale = next;
+  if (next) zoomInPlace(v, () => (v.currentScale = next));
 }
 
 /** Phones: hide bars on scroll down, show on scroll up / near the top (§10.3); blank taps toggle via useLineTap. */
@@ -178,9 +197,9 @@ export function ReaderView({
   }, []);
   const lastPointer = useRef<PointerKind>('mouse');
   const selection = useReaderStore((s) => s.selection);
-  const { palette, warmth, invertImages, keymap: overrides } = useSettings();
+  const { palette, keymap: overrides } = useSettings();
   const keymap = useMemo(() => applyOverrides(overrides), [overrides]); // FR-KEY-04
-  const theme = useResolvedTheme();
+  const { resolved: theme, warmth, invertImages } = useBookTheme(row.id); // this book's own (FR-THM-06)
   const [colourPref, setColourPref] = usePref('reader.colour', COLOUR_SLOTS, '1');
   const active = palette.find((p) => String(p.id) === colourPref)?.id ?? palette[0]?.id ?? 1;
   const setActive = useCallback((id: number) => setColourPref(COLOUR_SLOTS[id - 1] ?? '1'), [setColourPref]);
@@ -197,18 +216,27 @@ export function ReaderView({
   useEffect(() => {
     let created: Viewer | undefined;
     let cancelled = false;
-    void createViewer(container.current!, pdf, row.contentHash).then((v) => {
+    // the stored zoom first: listeners must be on the bus as soon as the viewer exists, or pagesinit is missed
+    void metaRepo.get(zoomKey(row.id)).then(async (stored) => {
+      if (cancelled) return;
+      const v = await createViewer(container.current!, pdf, row.contentHash);
       if (cancelled) return v.destroy();
       created = v;
+      // this book's last zoom here, else the default (FR-SET-02); applied before the resume scroll (pagesReady)
+      let zoom = validZoom(stored) ? stored : readPref('reader.zoom', ZOOM_DEFAULTS, 'page-width');
       v.eventBus.on('pagesinit', () => {
-        setZoom(v.viewer, readPref('reader.zoom', ZOOM_DEFAULTS, 'page-width')); // FR-SET-02; device-local, never synced
+        setZoom(v.viewer, zoom);
         container.current?.focus({ preventScroll: true }); // arrows/space scroll right away
         setPagesReady(true);
       });
       v.eventBus.on('pagechanging', (e: { pageNumber: number }) => setPage(e.pageNumber));
-      v.eventBus.on('scalechanging', (e: { scale: number; presetValue?: string }) =>
-        setScale({ value: e.scale, preset: e.presetValue ?? fitPreset(v.viewer, e.scale) }),
-      );
+      v.eventBus.on('scalechanging', (e: { scale: number; presetValue?: string }) => {
+        const preset = e.presetValue ?? fitPreset(v.viewer, e.scale);
+        setScale({ value: e.scale, preset });
+        // saved only when it changes, so a book never zoomed keeps following the default
+        const value = preset ?? String(e.scale);
+        if (value !== zoom) void metaRepo.set(zoomKey(row.id), (zoom = value));
+      });
       // every page's size is known only now: re-fit a preset to the document's common page size
       v.eventBus.on('pagesloaded', () => refit(v.viewer));
       v.eventBus.on('rotationchanging', (e: { pagesRotation: number }) => setRotation(e.pagesRotation));
@@ -220,7 +248,7 @@ export function ReaderView({
       viewerRef.current = null;
       created?.destroy();
     };
-  }, [pdf, row.contentHash]);
+  }, [pdf, row.contentHash, row.id]);
 
   /** Quick bookmark (FR-BKM-01): the line cursor, else the reading line. */
   const bookmarkHere = useCallback(async () => {
@@ -350,7 +378,7 @@ export function ReaderView({
           return true;
         case 'cycleTheme': {
           const next = CYCLE[(CYCLE.indexOf(theme) + 1) % CYCLE.length]!;
-          void updateSettings({ theme: next });
+          void updateBookTheme(row.id, { theme: next });
           toast(en.theme.now(en.theme[next]));
           return true;
         }
@@ -359,7 +387,7 @@ export function ReaderView({
           zoomStep(v, action === 'zoomIn' ? 1 : -1); // instead of the browser's page zoom
           return true;
         case 'zoomReset':
-          setZoom(v, 'page-width');
+          zoomInPlace(v, () => setZoom(v, 'page-width'));
           return true;
         case 'help':
           setHelp((h) => !h);
@@ -612,7 +640,8 @@ export function ReaderView({
                 value={zoomValue}
                 onChange={(e) => {
                   const v = viewerRef.current?.viewer;
-                  if (v && e.target.value !== 'custom') setZoom(v, e.target.value);
+                  const value = e.target.value;
+                  if (v && value !== 'custom') zoomInPlace(v, () => setZoom(v, value));
                 }}
                 className="min-h-9 rounded-md border border-line-strong bg-ui-bg px-1 text-ui-fg"
               >
@@ -675,7 +704,7 @@ export function ReaderView({
             ⌕
           </button>
           {!compact && <SyncPill />}
-          {!compact && <ThemeMenu reader triggerRef={themeTrigger} />}
+          {!compact && <ThemeMenu documentId={row.id} triggerRef={themeTrigger} />}
         </header>
         {finding && ready && <FindBar getViewer={getViewer} onClose={() => setFinding(false)} />}
       </div>
@@ -825,7 +854,7 @@ export function ReaderView({
             <BookmarkIcon />
           </button>
           {sidebarToggle}
-          <ThemeMenu reader triggerRef={themeTrigger} />
+          <ThemeMenu documentId={row.id} triggerRef={themeTrigger} />
         </div>
       )}
       <CheatSheet open={help} onOpenChange={setHelp} keymap={keymap} />

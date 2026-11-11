@@ -1,4 +1,5 @@
-import { createBrowserRouter, RouterProvider } from 'react-router';
+import { useSyncExternalStore } from 'react';
+import { createBrowserRouter, matchPath, RouterProvider } from 'react-router';
 import { initAuth } from '../core/auth';
 import { AuthGate } from '../features/auth/AuthGate';
 import { AuthConfirmPage, LoginPage } from '../features/auth/LoginPage';
@@ -41,8 +42,12 @@ const router = createBrowserRouter([
   },
 ]);
 
+const subscribe = (onChange: () => void) => router.subscribe(onChange);
+const pathname = () => router.state.location.pathname;
+
 export function App() {
-  useTheme();
+  // the open book's own theme in the reader (FR-THM-06); out here, so error screens are themed too
+  useTheme(matchPath('/read/:documentId', useSyncExternalStore(subscribe, pathname))?.params.documentId);
   return (
     <>
       <RouterProvider router={router} />

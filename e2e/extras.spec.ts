@@ -80,6 +80,11 @@ test.describe('library and reader extras (T-408, FR-LIB-07/08, FR-RDR-10/11)', (
     await expect(page.locator('.page[data-page-number="3"]')).toBeHidden();
     await page.reload();
     await expect(page.getByRole('combobox', { name: 'Page layout' })).toHaveValue('single'); // remembered on this device
+    // jumps still land with only the current page laid out
+    await page.getByRole('textbox', { name: 'Page number' }).fill('4');
+    await page.getByRole('textbox', { name: 'Page number' }).press('Enter');
+    await expect(page.locator('.page[data-page-number="4"]')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Page number' })).toHaveValue('4');
   });
 
   test('spread with an oversized cover: the zoom fits the text pages, not the cover', async ({ page, isMobile }) => {

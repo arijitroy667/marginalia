@@ -55,6 +55,7 @@ export function scrollToPoint(
 ): void {
   const pv = pageViewAt(v, page - 1);
   if (!pv) return;
+  if (!pv.div.isConnected) v.currentPageNumber = page; // single-page layout: only the current page is laid out
   const d = fromCanonical({ x, y, w: 0, h: 0 }, v.pagesRotation);
   const r = pv.div.getBoundingClientRect();
   el.scrollTop += r.top - el.getBoundingClientRect().top + d.y * r.height - inset;

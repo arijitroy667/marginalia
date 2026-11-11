@@ -12,6 +12,7 @@ export const en = {
   },
   theme: {
     label: 'Theme',
+    thisBook: 'Theme for this book',
     system: 'System',
     light: 'Light',
     warm: 'Warm',
@@ -306,6 +307,8 @@ export const en = {
     storage: 'Storage',
     data: 'Your data',
     reading: 'Reading',
+    readingHint:
+      'Defaults for every book. A book’s Theme menu sets its own theme, and each book remembers its zoom on this device.',
     noteMarker: 'Note marker',
     gutter: { bubble: 'Speech bubble', dot: 'Dot' },
     defaultZoom: 'Default zoom (this device)',
@@ -367,5 +370,102 @@ export const en = {
     foreignBody: (email: string) =>
       `The library on this device belongs to a different account, so it will not be mixed with ${email}. Remove it from this device to continue, or sign out.`,
     removeAndContinue: 'Remove it and continue',
+    newHere: 'No password needed. New here? The same link sets up your account.',
+  },
+  /** Signed-out landing page at /login. Claims here must stay true to docs/privacy.md and the README. */
+  landing: {
+    nav: { label: 'Sections', problem: 'The problem', features: 'Features', how: 'How it works', privacy: 'Privacy' },
+    eyebrow: 'A line-level PDF reader',
+    titleStart: 'Read PDFs ',
+    titleMark: 'line by line',
+    titleEnd: '.',
+    lead: 'Marginalia makes the line the thing you work with. Tap a line to highlight it in a colour that means something, bookmark it, or write a note in the margin. Every book reopens at the exact line where you stopped, on any device.',
+    start: 'Get started',
+    seeHow: 'See how it works',
+    perks: ['Works offline', 'Installs like an app', 'No ads, no tracking'],
+    problemEyebrow: 'The problem',
+    problemTitle: 'PDF readers treat a page like a picture.',
+    problemLead:
+      'You read in lines and sentences: “page 20, that sentence.” Most readers work in pages and mouse drags, so every annotation costs a few steps and a menu, and colours, notes and bookmarks never add up to one picture.',
+    problems: [
+      {
+        title: 'Highlighting is fiddly',
+        body: 'Drag across a two-column paper and you grab the wrong column. Each highlight is a careful selection and then a menu.',
+      },
+      {
+        title: 'Colours mean nothing',
+        body: 'Yellow is just yellow. Weeks later you cannot tell a key idea from something you meant to look up.',
+      },
+      {
+        title: 'You lose your place',
+        body: 'At best a book reopens on the right page, and you hunt for the line. On another device you start from the top.',
+      },
+      {
+        title: 'Notes live somewhere else',
+        body: 'Your thoughts end up in another app, cut off from the sentence that prompted them.',
+      },
+    ],
+    featuresEyebrow: 'The answer',
+    featuresTitle: 'One tap on a line. One more to keep it.',
+    preview:
+      'Preview of a page in Marginalia: two highlighted lines with their meanings, a bookmarked line and a note in the margin.',
+    previewNote: 'Compare with chapter 2',
+    previewResume: 'You stopped here',
+    features: [
+      {
+        title: 'Highlights with meanings',
+        body: 'Up to eight colours, each with your own label: Key idea, Definition, Look up. One tap, or one key.',
+      },
+      {
+        title: 'Bookmarks and resume',
+        body: 'Bookmark any line with B. Every book reopens at the exact line, even on another device.',
+      },
+      {
+        title: 'Notes in the margin',
+        body: 'A note on any line, saved as you type, with a marker in the margin that opens it.',
+      },
+      {
+        title: 'A theme for each book',
+        body: 'Light, Warm or Dark recolour the page itself, photos stay natural, and every book keeps its own.',
+      },
+      {
+        title: 'Search and export',
+        body: 'Find any highlight or note across your library. Export a book as Markdown or JSON.',
+      },
+      {
+        title: 'Keyboard first',
+        body: 'J and K move line by line across columns and pages, 1 to 8 pick a colour, and ? lists every shortcut.',
+      },
+    ],
+    howEyebrow: 'How it works',
+    howTitle: 'From PDF to notes in three steps.',
+    steps: [
+      { title: 'Add a PDF', body: 'Drop files on your library or pick them. Papers, textbooks, slides and scans.' },
+      { title: 'Tap a line', body: 'A toolbar appears beside it: a colour, a bookmark or a note, one more tap away.' },
+      {
+        title: 'Pick up where you stopped',
+        body: 'Close the book on your phone and open your laptop: same book, same line.',
+      },
+    ],
+    privacyEyebrow: 'Privacy',
+    privacyTitle: 'Your reading stays yours.',
+    privacy: [
+      {
+        title: 'Local first',
+        body: 'Your library lives on your device and works offline. Changes sync to your account when you are online.',
+      },
+      {
+        title: 'Nothing collected',
+        body: 'No analytics, no tracking, no advertising and no third-party scripts. The app logs none of your text.',
+      },
+      {
+        title: 'Yours to take',
+        body: 'Export every highlight, note and bookmark as Markdown or JSON whenever you like.',
+      },
+    ],
+    ctaTitle: 'Start reading closely.',
+    ctaBody: 'Sign in with your email or Google and your first book is a drop away.',
+    ctaButton: 'Sign in to get started',
+    footer: 'A line-level PDF reader. Installable, offline-ready and private.',
   },
 } as const;

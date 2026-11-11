@@ -90,9 +90,21 @@ export const DEFAULT_PALETTE: readonly PaletteEntry[] = [
   { id: 5, hex: '#C3A6F2', label: 'Revisit' },
 ];
 
+const ThemeIdSchema = z.enum(['system', 'light', 'warm', 'dark']);
+const WarmthSchema = z.number().min(0).max(100);
+
+/** A book's own theme (FR-THM-06): set from the reader's Theme menu; missing fields fall back to the defaults. */
+export const BookThemeSchema = z.object({
+  theme: ThemeIdSchema.optional(),
+  warmth: WarmthSchema.optional(),
+  invertImages: z.boolean().optional(),
+});
+export type BookTheme = z.infer<typeof BookThemeSchema>;
+
 /** profiles.settings JSON. Loose: keys written by newer clients survive a whole-row LWW push. */
 export const SettingsSchema = z.looseObject({
-  theme: z.enum(['system', 'light', 'warm', 'dark']).default('system'),
+  theme: ThemeIdSchema.default('system'), // library/settings chrome, and every book without its own
+  bookThemes: z.record(z.string(), BookThemeSchema).default({}), // document id -> that book's theme
   palette: z
     .array(PaletteEntrySchema)
     .min(1)
@@ -100,7 +112,7 @@ export const SettingsSchema = z.looseObject({
     .refine((p) => new Set(p.map((e) => e.id)).size === p.length, 'palette ids must be unique')
     .default(() => DEFAULT_PALETTE.map((e) => ({ ...e }))),
   gutterStyle: z.enum(['bubble', 'dot']).default('bubble'), // note indicator (FR-NOT-02)
-  warmth: z.number().min(0).max(100).default(0), // FR-THM-03
+  warmth: WarmthSchema.default(0), // FR-THM-03
   invertImages: z.boolean().default(false),
   keymap: z.record(z.string(), z.string().length(1)).default({}), // action -> key (FR-KEY-04); unknown actions ignored // Dark: invert images too (FR-THM-02); scanned pages always invert
 });

@@ -16,3 +16,6 @@ export const BookmarkIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M6 3h12v18l
 export const NoteIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M4 5h16v11H9l-5 4z" {...p} />;
 export const EyeIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" {...p} />;
 export const EyeOffIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM3 3l18 18" {...p} />;
+export const HighlighterIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M15 4l5 5-9 9H6v-5zM4 21h9" {...p} />;
+export const SearchIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4" {...p} />;
+export const KeyboardIcon = (p: SVGProps<SVGSVGElement>) => <Icon d="M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h.01M7 14h10" {...p} />;

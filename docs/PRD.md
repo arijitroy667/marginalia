@@ -161,7 +161,7 @@ Each row is independently testable. "AC" = acceptance criteria. Test each AC wit
 |---|---|---|---|
 | FR-RDR-01 | P0 | Continuous vertical scroll, virtualised. | Rendered canvases are limited to PDF.js's page-view LRU (`max(10, 2·visible+1)`), each capped by `maxCanvasPixels` (NFR-PERF-04, ADR 0003). |
 | FR-RDR-02 | P0 | Page navigation: page-number input, prev/next, Home/End, PgUp/PgDn, scrubber on mobile. | `G` focuses page input. Invalid input is ignored with feedback. |
-| FR-RDR-03 | P0 | Zoom: fit-width (default), fit-page, 50 to 400 %, `Ctrl/Cmd+wheel`, `Ctrl/Cmd +/-/0`, pinch on touch. | Pinch uses CSS transform during gesture and re-renders on release; no canvas exceeds NFR-PERF-04. Zoom is device-local (not synced). |
+| FR-RDR-03 | P0 | Zoom: fit-width (default), fit-page, 50 to 400 %, `Ctrl/Cmd+wheel`, `Ctrl/Cmd +/-/0`, pinch on touch. | Pinch uses CSS transform during gesture and re-renders on release; no canvas exceeds NFR-PERF-04. Zoom is device-local (not synced) and **per document**: each book reopens at its last zoom on this device (Dexie `meta`, `zoom:<documentId>`); a book never zoomed follows the default zoom (FR-SET-02). A zoom change from the menu, buttons or keys keeps the current page on screen and the page number unchanged (PDF.js alone pins the viewport's top-left point, which can hand the view to the previous page). |
 | FR-RDR-04 | P0 | Thumbnails sidebar. | Lazy; current page highlighted; click jumps. |
 | FR-RDR-05 | P0 | Outline / table of contents. | Rendered from `getOutline()`; nested; click jumps to destination; hidden if the PDF has none. |
 | FR-RDR-06 | P0 | In-document text search (`Ctrl/Cmd+F`, `/`). | Uses PDF.js `PDFFindController`; match count, next/prev (`Enter`/`Shift+Enter`), match highlight distinct from user highlights, case-insensitive default. |
@@ -230,7 +230,7 @@ Each row is independently testable. "AC" = acceptance criteria. Test each AC wit
 | FR-THM-03 | P0 | **Warmth** slider 0 to 100 % (colour-temperature overlay, `mix-blend-mode: multiply`, `pointer-events: none`) available in every theme. P1: brightness dimmer 50 to 100 %. | Overlay never blocks input. |
 | FR-THM-04 | P0 | Changing theme MUST NOT re-fetch or re-parse the PDF. | Visible pages update < 300 ms (NFR-PERF-05). |
 | FR-THM-05 | P0 | Highlights, gutter icons, toolbars stay legible in every theme (per-theme tokens). | Contrast ≥ 3:1 for icons, ≥ 4.5:1 text-over-highlight. |
-| FR-THM-06 | P0 | Global default theme + P1 per-document override. | Persisted and synced in `profiles.settings`. |
+| FR-THM-06 | P0 | Global default theme + P1 per-document override. | Persisted and synced in `profiles.settings` (`theme`, `warmth`, `invertImages` = defaults; `bookThemes[documentId]` = a book's own). In the reader the Theme menu (and `Shift+T`) sets **that book's** theme, warmth and image inversion only; the library, settings and books without their own use the defaults (Settings → Reading). |
 | FR-THM-07 | P0 | `meta theme-color` and PWA splash follow the theme. | |
 
 ### 6.8 Annotation panel and search (`FR-PNL`)
@@ -256,7 +256,7 @@ Each row is independently testable. "AC" = acceptance criteria. Test each AC wit
 
 | ID | Pri | Requirement | AC |
 |---|---|---|---|
-| FR-SYN-01 | P0 | Auth via Supabase: email magic link + Google OAuth; persistent session. | Sign-out offers "Remove data from this device". |
+| FR-SYN-01 | P0 | Auth via Supabase: email magic link + Google OAuth; persistent session. | Sign-out offers "Remove data from this device". Signed out, `/login` is a landing page (§10.5) with the sign-in form on its first screen. |
 | FR-SYN-02 | P0 | Local-first writes. | Every mutation commits data **and** an outbox row in one Dexie transaction before the UI confirms. |
 | FR-SYN-03 | P0 | Push: outbox flushes on online/foreground/1 s after the last enqueue (debounced)/30 s timer; exponential backoff; idempotent upserts keyed by client-generated UUID; same-entity upserts coalesce. | No outbox item is dropped silently. |
 | FR-SYN-04 | P0 | Pull: keyset cursor `(updated_at, id)` per table with a 5 s overlap window; apply by last-write-wins. | Rows with a pending outbox entry are **not** overwritten by pull. |
@@ -614,7 +614,7 @@ create type public.doc_storage_mode as enum ('cloud', 'device');
 create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text,
-  settings jsonb not null default '{}'::jsonb,   -- palette, theme, warmth, gutter style, keymap
+  settings jsonb not null default '{}'::jsonb,   -- palette, theme, warmth, gutter style, keymap, per-book themes
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -841,6 +841,7 @@ Rows mirror the SQL columns (camelCase) **without `user_id`** (the server fills 
 
 ### 10.5 First-run and empty states
 
+- Signed out (`/login`, cloud builds only): a landing page in frosted-glass panels over soft light in the highlight colours. Sections: hero (what Marginalia is) beside the sign-in card, the problem (§1.1), features, how it works (3 steps), privacy (claims must match `docs/privacy.md`), a closing call to sign in. Theme follows the default theme; no settings are written while signed out (they would be pushed over the account's on sign-in). WCAG 2.2 AA in Light and Dark; no horizontal scroll at phone width.
 - First run: sign-in → empty library with a large "Add a PDF" drop zone and a 3-step coach mark (tap a line / press `H` / press `N`).
 - iOS Safari (not installed): banner explaining "Share → Add to Home Screen" and why (storage durability).
 - Pages without text: banner per FR-LIN-06. Offline without cache: explain and offer retry.

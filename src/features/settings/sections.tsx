@@ -44,7 +44,8 @@ function Choice<T extends string>({
   );
 }
 
-/** Reading defaults (FR-SET-01/02): synced theme, warmth, image inversion, note marker; device-local zoom. */
+/** Reading defaults (FR-SET-01/02): synced theme, warmth, image inversion, note marker; device-local zoom. A book's
+ *  own Theme menu and zoom override them for that book (FR-THM-06, FR-RDR-03). */
 export function ReadingSection() {
   const s = useSettings();
   const [zoom, setZoom] = usePref('reader.zoom', ZOOM_DEFAULTS, 'page-width');
@@ -54,6 +55,7 @@ export function ReadingSection() {
       <h2 id="set-reading" className="font-medium">
         {en.settings.reading}
       </h2>
+      <p className="text-sm text-muted">{en.settings.readingHint}</p>
       <Choice
         legend={en.theme.label}
         value={s.theme}

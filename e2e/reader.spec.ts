@@ -81,6 +81,47 @@ test.describe('reader shell (T-107, FR-RDR-01..03, FR-RDR-12)', () => {
       await expect.poll(() => scale(page)).toBeGreaterThan(fit * 1.3);
     });
 
+    test('a zoom change keeps the page being read, even with the previous page showing above it', async ({
+      page,
+      isMobile,
+    }) => {
+      test.skip(isMobile, 'zoom menu is desktop chrome');
+      await open(page, '01-single-column-prose.pdf', '01-single-column-prose');
+      const zoom = page.getByRole('combobox', { name: 'Zoom' });
+      for (const [from, to] of [
+        ['page-fit', '2'],
+        ['1', '2'],
+        ['2', 'page-fit'],
+        ['2', '1'],
+        ['page-width', '0.5'],
+      ]) {
+        await zoom.selectOption(from!);
+        // page 3 fills most of the screen; the foot of page 2 shows above it (PDF.js alone would land on page 2)
+        await page.locator('.reader-scroll').evaluate((el) => {
+          const p = el.querySelector('.page[data-page-number="3"]')!.getBoundingClientRect();
+          el.scrollTop += p.top - el.getBoundingClientRect().top - el.clientHeight * 0.3;
+        });
+        await expect(pageInput(page)).toHaveValue('3');
+        await zoom.selectOption(to!);
+        await page.waitForTimeout(300); // PDF.js recomputes the current page on the next frame
+        await expect(pageInput(page), `${from} -> ${to}`).toHaveValue('3');
+      }
+    });
+
+    test('each book reopens at its own zoom; an untouched book follows the default', async ({ page, isMobile }) => {
+      test.skip(isMobile, 'zoom menu is desktop chrome');
+      await open(page, '01-single-column-prose.pdf', '01-single-column-prose');
+      const zoom = page.getByRole('combobox', { name: 'Zoom' });
+      await zoom.selectOption('2');
+      await page.getByRole('link', { name: 'Library' }).click();
+      await open(page, '05-tables.pdf', '05-tables');
+      await expect(zoom).toHaveValue('page-width');
+      await page.getByRole('link', { name: 'Library' }).click();
+      await page.getByRole('link', { name: /01-single-column-prose/ }).click();
+      await expect(zoom).toHaveValue('2');
+      await expect.poll(() => scale(page)).toBeCloseTo(8 / 3, 2); // 200 % = 2 pt -> 96/72 CSS px
+    });
+
     test('a locked PDF explains itself and recovers with the password', async ({ page }) => {
       await page.goto('/');
       await addViaPicker(page, '13-password.pdf');
